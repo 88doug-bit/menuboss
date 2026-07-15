@@ -1,0 +1,17 @@
+{
+  "name": "menu-boss",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.13.0",
+  "description": "MenuBoss monorepo — shared meal planning (Phase 1).",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "build": "pnpm --filter web build"
+  }
+}

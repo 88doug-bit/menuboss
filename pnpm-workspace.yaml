@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Native/build-script deps we explicitly trust to run install scripts.
+# esbuild -> vitest transform; sharp -> Next.js image optimization;
+# unrs-resolver -> eslint import resolver.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

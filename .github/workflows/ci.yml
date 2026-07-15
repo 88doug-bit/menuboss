@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: typecheck + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Unit tests
+        run: pnpm -r test
+
+  # ---------------------------------------------------------------------------
+  # Database gates (CI-BLOCKING per Product PRD v0.2 §11 / decision D10):
+  #   1. pgTAP RLS matrix (supabase/tests/rls/matrix.test.sql)
+  #   2. SQL function arithmetic tests (supabase/tests/functions/)
+  #   3. TS ↔ SQL portion contract test (must RUN here, never skip)
+  # ---------------------------------------------------------------------------
+  database-gates:
+    name: RLS matrix + SQL tests + contract test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Pinned deliberately: a floating `latest` can reject our hand-authored
+          # config.toml and kill this gate before any test runs. Bump on purpose,
+          # verifying `supabase start` still accepts supabase/config.toml.
+          version: 2.20.5
+
+      - name: Start local Supabase (applies migrations + seed)
+        run: |
+          supabase start
+          supabase migration list
+
+      - name: Run pgTAP suites (RLS matrix + function tests)
+        run: supabase test db
+
+      - name: Contract test (TS portion-calc ↔ SQL weekly_protein_rollup)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          # Run ONLY the contract file and assert the positive: all 10 cases
+          # passed. String-matching "skipped" is brittle; requiring the exact
+          # pass count is not.
+          OUTPUT=$(pnpm --filter @menu-boss/portion-calc exec vitest run src/contract.integration.test.ts 2>&1) || { echo "$OUTPUT"; exit 1; }
+          echo "$OUTPUT"
+          if ! echo "$OUTPUT" | grep -Eq "Tests[^0-9]*10 passed"; then
+            echo "::error::Contract suite did not report 10 passing cases — it was skipped or partially ran. This gate must fully run."
+            exit 1
+          fi

@@ -1,0 +1,228 @@
+[
+  {
+    "name": "prd_worked_example_adult_male",
+    "description": "PRD worked example: adult_male count=2 athlete=1 base=6.0 mult=1.5 → ((2-1)+1×1.5)×6 = 15",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 6.0,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-adult-male",
+        "count": 2,
+        "athleteCount": 1
+      }
+    ],
+    "expectedEffectiveOz": 15.0
+  },
+  {
+    "name": "zero_rows",
+    "description": "Empty requirements array → 0",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 6.0,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [],
+    "expectedEffectiveOz": 0.0
+  },
+  {
+    "name": "zero_counts",
+    "description": "count=0 athlete=0 → (0+0)×base = 0 (row would not be persisted, but pure fn accepts it)",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 6.0,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-adult-male",
+        "count": 0,
+        "athleteCount": 0
+      }
+    ],
+    "expectedEffectiveOz": 0.0
+  },
+  {
+    "name": "all_athlete_group",
+    "description": "count=3 athlete=3 base=6 mult=1.5 → (0+3×1.5)×6 = 27",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 6.0,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-adult-male",
+        "count": 3,
+        "athleteCount": 3
+      }
+    ],
+    "expectedEffectiveOz": 27.0
+  },
+  {
+    "name": "multi_category_mixed",
+    "description": "adult_male 15 + adult_female ((2-0)+0)×5=10 + child 1×3=3 → 28",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 6.0,
+        "isActive": true
+      },
+      {
+        "id": "cat-adult-female",
+        "slug": "adult_female",
+        "baseProteinOz": 5.0,
+        "isActive": true
+      },
+      {
+        "id": "cat-child",
+        "slug": "child",
+        "baseProteinOz": 3.0,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-adult-male",
+        "count": 2,
+        "athleteCount": 1
+      },
+      {
+        "portionCategoryId": "cat-adult-female",
+        "count": 2,
+        "athleteCount": 0
+      },
+      {
+        "portionCategoryId": "cat-child",
+        "count": 1,
+        "athleteCount": 0
+      }
+    ],
+    "expectedEffectiveOz": 28.0
+  },
+  {
+    "name": "deactivated_category_still_calculates",
+    "description": "isActive=false adult_male same as worked example → 15 (D11 historical plans)",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 6.0,
+        "isActive": false
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-adult-male",
+        "count": 2,
+        "athleteCount": 1
+      }
+    ],
+    "expectedEffectiveOz": 15.0
+  },
+  {
+    "name": "floating_point_base_5_3",
+    "description": "base 5.3 mult 1.5 count 2 athlete 1 → 2.5×5.3 = 13.25",
+    "categories": [
+      {
+        "id": "cat-custom",
+        "slug": "custom",
+        "baseProteinOz": 5.3,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-custom",
+        "count": 2,
+        "athleteCount": 1
+      }
+    ],
+    "expectedEffectiveOz": 13.25
+  },
+  {
+    "name": "athlete_equals_count_boundary",
+    "description": "count=2 athlete=2 base=4 mult=2 → (0+2×2)×4 = 16",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 4.0,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 2.0 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-adult-male",
+        "count": 2,
+        "athleteCount": 2
+      }
+    ],
+    "expectedEffectiveOz": 16.0
+  },
+  {
+    "name": "hand_computed_4dp_mixed_multiplier",
+    "description": "base 4.25 mult 1.33 count 3 athlete 2 → (1+2×1.33)×4.25 = 3.66×4.25 = 15.555",
+    "categories": [
+      {
+        "id": "cat-teen",
+        "slug": "adolescent_male_over_15",
+        "baseProteinOz": 4.25,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.33 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-teen",
+        "count": 3,
+        "athleteCount": 2
+      }
+    ],
+    "expectedEffectiveOz": 15.555
+  },
+  {
+    "name": "no_athletes_plain_sum",
+    "description": "count=4 athlete=0 base=6 mult=1.5 → 4×6 = 24 (multiplier unused)",
+    "categories": [
+      {
+        "id": "cat-adult-male",
+        "slug": "adult_male",
+        "baseProteinOz": 6.0,
+        "isActive": true
+      }
+    ],
+    "settings": { "athleteMultiplier": 1.5 },
+    "requirements": [
+      {
+        "portionCategoryId": "cat-adult-male",
+        "count": 4,
+        "athleteCount": 0
+      }
+    ],
+    "expectedEffectiveOz": 24.0
+  }
+]

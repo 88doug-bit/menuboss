@@ -1,0 +1,35 @@
+{
+  "name": "@menu-boss/portion-calc",
+  "version": "0.1.0",
+  "description": "Canonical pure TypeScript protein portion calculation for MenuBoss (decision D3).",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "src",
+    "fixtures"
+  ],
+  "keywords": [
+    "menu-boss",
+    "portion",
+    "protein"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "@types/pg": "^8.20.0",
+    "pg": "^8.22.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

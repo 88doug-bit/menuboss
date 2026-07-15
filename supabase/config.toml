@@ -1,0 +1,26 @@
+# Minimal Supabase local config (hand-authored — CLI was unavailable at
+# scaffold time; regenerate with `supabase init` if the CLI needs more keys).
+project_id = "menu_boss"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[realtime]
+enabled = true

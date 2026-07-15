@@ -1,0 +1,42 @@
+{
+  "name": "@menu-boss/schemas",
+  "version": "0.1.0",
+  "description": "Shared Zod schemas for MenuBoss tRPC procedures and forms.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./common": "./src/common.ts",
+    "./recipe": "./src/recipe.ts",
+    "./ingredient": "./src/ingredient.ts",
+    "./category": "./src/category.ts",
+    "./tag": "./src/tag.ts",
+    "./chefIdea": "./src/chefIdea.ts",
+    "./recipeCombination": "./src/recipeCombination.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "menu-boss",
+    "zod",
+    "schemas"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
