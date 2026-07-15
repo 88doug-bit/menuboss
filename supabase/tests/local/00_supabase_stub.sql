@@ -27,3 +27,12 @@ AS $$
   )::uuid;
 $$;
 GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated;
+
+-- Minimal auth.users so 0005's provisioning triggers install and are testable
+-- locally (the real table has many more columns; provisioning touches only
+-- id + email).
+CREATE TABLE IF NOT EXISTS auth.users (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

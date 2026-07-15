@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Placeholder spec. Real E2E (plan-a-shared-meal, §9.3) arrives in Wave 2.
- * Skipped so `playwright test` is green without a running dev server / browsers.
+ * Placeholder kept for smoke discovery. Real §9.3 flows live in sibling specs.
+ * Always skipped — does not require E2E_SUPABASE_URL or a running app.
  */
-test.skip("home page renders", async ({ page }) => {
+test.skip("home page renders (placeholder)", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/MenuBoss/i);
 });

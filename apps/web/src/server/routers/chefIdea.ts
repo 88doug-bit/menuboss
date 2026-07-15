@@ -4,6 +4,7 @@
  * links convertedRecipeId (DB: linked_recipe_id).
  */
 import {
+  chefIdeaByIdInputSchema,
   chefIdeaConvertToRecipeInputSchema,
   chefIdeaCreateInputSchema,
   chefIdeaListInputSchema,
@@ -106,6 +107,20 @@ export const chefIdeaRouter = createTRPCRouter({
         items: page.map(mapChefIdeaRow),
         nextCursor,
       };
+    }),
+
+  /** Detail by id — does not filter deleted_at (badge soft-deleted refs). */
+  byId: authedProcedure
+    .input(chefIdeaByIdInputSchema)
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.supabase
+        .from("chef_idea")
+        .select("*")
+        .eq("id", input.id)
+        .maybeSingle();
+      if (error) throwFromPostgrest(error);
+      assertFound(data, "ChefIdea not found");
+      return mapChefIdeaRow(data as ChefIdeaRow);
     }),
 
   create: authedProcedure

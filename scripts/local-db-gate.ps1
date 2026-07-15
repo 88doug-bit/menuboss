@@ -22,33 +22,34 @@ function Invoke-Psql {
     if ($LASTEXITCODE -ne 0) { throw "psql failed ($LASTEXITCODE): $($PsqlArgs -join ' ')" }
 }
 
-Write-Output '=== [1/5] Recreate database + apply stub, migrations, seed, shim'
+Write-Output '=== [1/5] Recreate database + apply stub, ALL migrations, seed, shim'
 # WITH (FORCE): terminate lingering connections (e.g., a pooled client from a
 # previous contract-test run) instead of hanging the whole gate on the DROP.
 & "$pg\psql.exe" @conn -d postgres -c "DROP DATABASE IF EXISTS $db WITH (FORCE);" | Out-Null
 & "$pg\psql.exe" @conn -d postgres -c "CREATE DATABASE $db;" | Out-Null
-Invoke-Psql $db @('-f', "$repo\supabase\tests\local\00_supabase_stub.sql")
-Invoke-Psql $db @('-f', "$repo\supabase\migrations\0001_schema.sql")
-Invoke-Psql $db @('-f', "$repo\supabase\migrations\0002_security.sql")
-Invoke-Psql $db @('-f', "$repo\supabase\migrations\0003_functions.sql")
-Invoke-Psql $db @('-f', "$repo\supabase\seed.sql")
-Invoke-Psql $db @('-f', "$repo\supabase\tests\local\01_pgtap_shim.sql")
-
-Write-Output '=== [2/5] RLS matrix (supabase/tests/rls/matrix.test.sql)'
-$matrixOut = (& "$pg\psql.exe" @conn -d $db -f "$repo\supabase\tests\rls\matrix.test.sql" 2>&1 | ForEach-Object { "$_" }) -join "`n"
-if ($LASTEXITCODE -ne 0 -or $matrixOut -match 'TAP-FAIL|NOT OK') {
-    Write-Output $matrixOut
-    throw 'RLS matrix FAILED'
+$applyFiles = @("$repo\supabase\tests\local\00_supabase_stub.sql")
+$applyFiles += (Get-ChildItem "$repo\supabase\migrations\*.sql" | Sort-Object Name | ForEach-Object { $_.FullName })
+$applyFiles += @("$repo\supabase\seed.sql", "$repo\supabase\tests\local\01_pgtap_shim.sql")
+foreach ($f in $applyFiles) {
+    Write-Output ("    applying " + (Split-Path -Leaf $f))
+    Invoke-Psql $db @('-f', $f)
 }
-Write-Output ($matrixOut -split "`n" | Where-Object { $_ -match 'TAP: all' })
 
-Write-Output '=== [3/5] SQL function tests (supabase/tests/functions/aggregation.test.sql)'
-$fnOut = (& "$pg\psql.exe" @conn -d $db -f "$repo\supabase\tests\functions\aggregation.test.sql" 2>&1 | ForEach-Object { "$_" }) -join "`n"
-if ($LASTEXITCODE -ne 0 -or $fnOut -match 'TAP-FAIL|NOT OK') {
-    Write-Output $fnOut
-    throw 'SQL function tests FAILED'
+Write-Output '=== [2/5] pgTAP suites (supabase/tests/rls + supabase/tests/functions)'
+$suiteFiles = @()
+$suiteFiles += (Get-ChildItem "$repo\supabase\tests\rls\*.test.sql" | Sort-Object Name | ForEach-Object { $_.FullName })
+$suiteFiles += (Get-ChildItem "$repo\supabase\tests\functions\*.test.sql" | Sort-Object Name | ForEach-Object { $_.FullName })
+foreach ($t in $suiteFiles) {
+    $name = Split-Path -Leaf $t
+    $out = (& "$pg\psql.exe" @conn -d $db -f $t 2>&1 | ForEach-Object { "$_" }) -join "`n"
+    if ($LASTEXITCODE -ne 0 -or $out -match 'TAP-FAIL|NOT OK') {
+        Write-Output $out
+        throw "pgTAP suite FAILED: $name"
+    }
+    $summary = ($out -split "`n" | Where-Object { $_ -match 'TAP: all' }) -join ''
+    Write-Output ("    " + $name + " -> " + $summary.Trim())
 }
-Write-Output ($fnOut -split "`n" | Where-Object { $_ -match 'TAP: all' })
+Write-Output '=== [3/5] (pgTAP suites consolidated into step 2)'
 
 Write-Output '=== [4/5] Contract test (TS portion-calc <-> SQL weekly_protein_rollup)'
 $env:Path = 'C:\Users\dougr\AppData\Local\Programs\nodejs;' + $env:Path

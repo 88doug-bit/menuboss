@@ -80,3 +80,111 @@ jobs:
             echo "::error::Contract suite did not report 10 passing cases — it was skipped or partially ran. This gate must fully run."
             exit 1
           fi
+
+      # ---------------------------------------------------------------------------
+      # Playwright E2E (§9.3 flows) + Scenario 11 realtime (Product PRD §11)
+      # Requires full local stack (already started above). Skipped only when
+      # E2E_SUPABASE_URL is unset — here it is always set.
+      # ---------------------------------------------------------------------------
+      - name: Export Supabase credentials for E2E
+        id: supabase_e2e
+        run: |
+          eval "$(supabase status -o env)"
+          # Fail LOUD on empty credentials: the E2E specs skip themselves when
+          # E2E_SUPABASE_URL is unset, so an empty export here would turn the
+          # whole suite into a green no-op (vacuous pass).
+          for v in API_URL ANON_KEY SERVICE_ROLE_KEY; do
+            [ -n "${!v}" ] || { echo "::error::supabase status returned empty $v — E2E would silently skip"; exit 1; }
+          done
+          {
+            echo "API_URL=$API_URL"
+            echo "ANON_KEY=$ANON_KEY"
+            echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_OUTPUT"
+          # Also export for subsequent steps
+          echo "E2E_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "E2E_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Enable Realtime publication for meal_plan tables
+        run: |
+          # Required for Scenario 11 postgres_changes. Idempotent add.
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres <<'SQL'
+          DO $$
+          DECLARE
+            t text;
+          BEGIN
+            FOREACH t IN ARRAY ARRAY[
+              'meal_plan',
+              'meal_plan_household',
+              'meal_plan_portion_requirement',
+              'meal_plan_assignment'
+            ]
+            LOOP
+              IF NOT EXISTS (
+                SELECT 1
+                FROM pg_publication_tables
+                WHERE pubname = 'supabase_realtime'
+                  AND schemaname = 'public'
+                  AND tablename = t
+              ) THEN
+                EXECUTE format(
+                  'ALTER PUBLICATION supabase_realtime ADD TABLE public.%I',
+                  t
+                );
+              END IF;
+            END LOOP;
+          END $$;
+          SQL
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install chromium --with-deps
+
+      - name: Build web app (against local Supabase)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: pnpm --filter web build
+
+      - name: Start web app
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          PORT: "3000"
+        run: |
+          pnpm --filter web start &
+          # Wait for readiness (no sleep-fixed flake in tests; only CI boot wait)
+          for i in $(seq 1 60); do
+            if curl -sf "http://127.0.0.1:3000" >/dev/null; then
+              echo "web app ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::web app failed to become ready on :3000"
+          exit 1
+
+      - name: Playwright E2E + Scenario 11 realtime
+        env:
+          E2E_SUPABASE_URL: ${{ env.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ env.E2E_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          CI: "true"
+        run: |
+          OUTPUT=$(pnpm --filter web test:e2e 2>&1) || { echo "$OUTPUT"; exit 1; }
+          echo "$OUTPUT"
+          # Anti-vacuous floor: with credentials asserted non-empty above, no
+          # spec may skip and at least the core suites must have run.
+          if echo "$OUTPUT" | grep -Eq "[0-9]+ skipped"; then
+            echo "::error::E2E specs were skipped despite credentials being set — investigate before trusting this gate."
+            exit 1
+          fi
+          if ! echo "$OUTPUT" | grep -Eq "([5-9]|[1-9][0-9]+) passed"; then
+            echo "::error::Fewer than 5 E2E tests passed — the suite did not genuinely run."
+            exit 1
+          fi

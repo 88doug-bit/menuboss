@@ -92,13 +92,30 @@ AS $$
   SELECT created_by_household_id FROM meal_plan WHERE id = p_meal_plan_id;
 $$;
 
+-- Membership check WITHOUT touching meal_plan itself. Used by meal_plan's own
+-- SELECT policy, which must otherwise be expressible over the row's own
+-- columns: INSERT ... RETURNING applies the SELECT policy to the new row
+-- BEFORE it is visible to any snapshot, so a policy that looks the row up
+-- by id (as can_view_meal_plan does) fails closed on every insert-returning.
+CREATE OR REPLACE FUNCTION is_plan_member(p_meal_plan_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM meal_plan_household mph
+    WHERE mph.meal_plan_id = p_meal_plan_id
+      AND mph.household_id = current_household_id()
+  );
+$$;
+
 DO $$
 DECLARE fn text;
 BEGIN
   FOREACH fn IN ARRAY ARRAY[
     'current_household_id()', 'is_family_member()', 'is_family_admin()',
     'can_view_meal_plan(uuid)', 'can_edit_meal_plan(uuid)',
-    'plan_creating_household(uuid)'
+    'plan_creating_household(uuid)', 'is_plan_member(uuid)'
   ] LOOP
     EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', fn);
     EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', fn);
@@ -150,6 +167,30 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- meal_plan additionally freezes created_by_household_id: it is the ownership
+-- anchor for every shape-B policy and the RPC's irremovable-creator invariant;
+-- a mutable value (even admin-mutated) would silently transfer edit rights.
+CREATE OR REPLACE FUNCTION guard_meal_plan_ownership_immutable()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF (NEW.created_by_user_id IS DISTINCT FROM OLD.created_by_user_id
+      OR NEW.created_by_household_id IS DISTINCT FROM OLD.created_by_household_id
+      OR NEW.created_at IS DISTINCT FROM OLD.created_at)
+     AND auth.uid() IS NOT NULL THEN
+    RAISE EXCEPTION 'meal plan ownership and attribution are immutable'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_meal_plan_ownership
+  BEFORE UPDATE ON meal_plan
+  FOR EACH ROW EXECUTE PROCEDURE guard_meal_plan_ownership_immutable();
 
 CREATE TRIGGER trg_recipe_attribution
   BEFORE UPDATE ON recipe
@@ -361,20 +402,36 @@ BEGIN
 END $$;
 
 -- ---- Shape B: household-visibility tables ----------------------------------
--- meal_plan: SELECT = creator disjunct OR membership OR admin (bootstrap +
--- fail-closed orphan handling); INSERT pins both household and user
--- attribution; UPDATE (incl. soft delete) = creating household or admin.
+-- meal_plan: its OWN policies are expressed over the ROW'S OWN COLUMNS plus
+-- definer helpers that never read meal_plan itself. Reason: INSERT/UPDATE
+-- with RETURNING applies the SELECT policy to the new row before any snapshot
+-- can see it — a self-lookup (can_view_meal_plan) fails closed there.
+-- SELECT = creator disjunct OR admin OR membership (bootstrap + fail-closed
+-- orphan handling); INSERT pins both household and user attribution;
+-- UPDATE (incl. soft delete) = creating household or admin.
 CREATE POLICY meal_plan_select ON meal_plan FOR SELECT TO authenticated
-  USING (can_view_meal_plan(id));
+  USING (
+    created_by_household_id = current_household_id()
+    OR is_family_admin()
+    OR is_plan_member(id)
+  );
 CREATE POLICY meal_plan_insert ON meal_plan FOR INSERT TO authenticated
   WITH CHECK (
     created_by_household_id = current_household_id()
     AND created_by_user_id = auth.uid()
   );
 CREATE POLICY meal_plan_update ON meal_plan FOR UPDATE TO authenticated
-  USING (can_edit_meal_plan(id))
-  WITH CHECK (can_edit_meal_plan(id));
+  USING (
+    created_by_household_id = current_household_id()
+    OR is_family_admin()
+  )
+  WITH CHECK (
+    created_by_household_id = current_household_id()
+    OR is_family_admin()
+  );
 -- No DELETE policy: soft delete only.
+-- can_view_meal_plan / can_edit_meal_plan remain the policy surface for the
+-- CHILD tables below — there the parent row is already committed/visible.
 
 -- Children: visible with the parent; writable by the creating household/admin.
 -- Membership alone grants READ ONLY (v1 rule).

@@ -5,3 +5,4 @@ export * from "./category";
 export * from "./tag";
 export * from "./chefIdea";
 export * from "./recipeCombination";
+export * from "./mealPlan";

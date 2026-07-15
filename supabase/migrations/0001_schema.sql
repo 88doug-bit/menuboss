@@ -474,7 +474,10 @@ CREATE TABLE meal_plan_assignment (
   recipe_id        uuid NOT NULL REFERENCES recipe(id) ON DELETE RESTRICT,
   assignment_date  date NOT NULL,
   meal_slot        text NOT NULL,
-  servings         numeric NOT NULL DEFAULT 1 CHECK (servings > 0),
+  -- '< Infinity' also rejects NaN (NaN sorts greater than every numeric,
+  -- so it passes a bare '> 0' check but fails this one).
+  servings         numeric NOT NULL DEFAULT 1
+                     CHECK (servings > 0 AND servings < 'Infinity'::numeric),
   notes            text,
   created_at       timestamptz NOT NULL DEFAULT now()
 );

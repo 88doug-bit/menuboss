@@ -11,7 +11,7 @@
 -- it lives in the integration suite; see supabase/tests/rls/README.md.
 
 BEGIN;
-SELECT plan(52);
+SELECT plan(54);
 
 -- ===========================================================================
 -- Fixtures (as superuser; audit triggers fire with actor NULL — expected)
@@ -147,6 +147,10 @@ SELECT lives_ok(
     VALUES ('00000000-0000-4000-8000-00000000e001', '00000000-0000-4000-8000-0000000000c0',
             '00000000-0000-4000-8000-0000000000a2')$$,
   'S3: admin_a can share P1 with Household C');
+SELECT throws_ok(
+  $$UPDATE meal_plan SET created_by_household_id = '00000000-0000-4000-8000-0000000000b0'
+    WHERE id = '00000000-0000-4000-8000-00000000e002'$$,
+  '42501', NULL, 'S3: even admin cannot transfer plan ownership (immutability trigger)');
 DELETE FROM meal_plan_household
   WHERE meal_plan_id = '00000000-0000-4000-8000-00000000e002'
     AND household_id = '00000000-0000-4000-8000-0000000000a0';
@@ -255,6 +259,18 @@ SELECT throws_ok(
   $$UPDATE recipe SET created_by_user_id = '00000000-0000-4000-8000-0000000000b1'
     WHERE id = '00000000-0000-4000-8000-00000000f001'$$,
   '42501', NULL, 'S6: attribution is immutable on UPDATE (trigger)');
+RESET ROLE;
+SELECT set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$UPDATE meal_plan SET created_by_user_id = '00000000-0000-4000-8000-0000000000a2'
+    WHERE id = '00000000-0000-4000-8000-00000000e001'$$,
+  '42501', NULL, 'S6: meal plan attribution is immutable even for the creating household');
+RESET ROLE;
+SELECT set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-0000000000b1","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
 SELECT lives_ok(
   $$UPDATE recipe SET title = 'Fixture Roast (B edit)'
     WHERE id = '00000000-0000-4000-8000-00000000f001'$$,
