@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Jupyter (if you ever experiment with notebooks)
+.ipynb_checkpoints/
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS (in case files come from a Mac)
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sensitive files -- never commit these
+.env
+*.pem
+*.key
+secrets.py
+config.local.*
+
+# Node (if aca-contract-auditor has any frontend deps)
+node_modules/
+
+# Logs
+*.log
+logs/
