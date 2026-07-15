@@ -6,3 +6,4 @@ export * from "./tag";
 export * from "./chefIdea";
 export * from "./recipeCombination";
 export * from "./mealPlan";
+export * from "./admin";

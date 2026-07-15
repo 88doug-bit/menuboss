@@ -155,14 +155,33 @@ export function RecipeBrowser() {
             Meals
           </button>
         </div>
-        {tab === "meals" ? (
-          <Link
-            href="/recipes/combinations/new"
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
-          >
-            New combination
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {tab === "recipes" ? (
+            <>
+              <Link
+                href="/recipes/ingredients"
+                data-testid="link-ingredients"
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              >
+                Ingredients
+              </Link>
+              <Link
+                href="/recipes/new"
+                data-testid="link-new-recipe"
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                New recipe
+              </Link>
+            </>
+          ) : (
+            <Link
+              href="/recipes/combinations/new"
+              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+            >
+              New combination
+            </Link>
+          )}
+        </div>
       </div>
 
       {tab === "recipes" ? (

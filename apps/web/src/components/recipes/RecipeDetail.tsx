@@ -1,12 +1,14 @@
 /**
  * Recipe detail: ingredients + safety callouts, instructions, rating,
- * leftovers decay path, soft-delete badge, Add to Plan / Combination.
+ * leftovers decay path, soft-delete badge, Add to Plan / Combination,
+ * edit + softDelete confirm + restore.
  */
 "use client";
 
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { DeletedBadge } from "@/components/shared/DeletedBadge";
 import { useTRPC } from "@/lib/trpc/client";
@@ -42,6 +44,8 @@ function parseDecayPath(raw: unknown): DecayPathEntry[] {
 export function RecipeDetail({ recipeId }: { recipeId: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const detailQuery = useQuery(trpc.recipe.byId.queryOptions({ id: recipeId }));
 
@@ -90,6 +94,34 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
           trpc.recipe.byId.queryFilter({ id: recipeId }),
         );
       },
+    }),
+  );
+
+  const softDeleteMutation = useMutation(
+    trpc.recipe.softDelete.mutationOptions({
+      onSuccess: async () => {
+        setActionError(null);
+        await queryClient.invalidateQueries(
+          trpc.recipe.byId.queryFilter({ id: recipeId }),
+        );
+        await queryClient.invalidateQueries(trpc.recipe.list.queryFilter());
+        router.refresh();
+      },
+      onError: (err) => setActionError(err.message ?? "Delete failed"),
+    }),
+  );
+
+  const restoreMutation = useMutation(
+    trpc.recipe.restore.mutationOptions({
+      onSuccess: async () => {
+        setActionError(null);
+        await queryClient.invalidateQueries(
+          trpc.recipe.byId.queryFilter({ id: recipeId }),
+        );
+        await queryClient.invalidateQueries(trpc.recipe.list.queryFilter());
+        router.refresh();
+      },
+      onError: (err) => setActionError(err.message ?? "Restore failed"),
     }),
   );
 
@@ -169,6 +201,15 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          {!recipe.isDeleted ? (
+            <Link
+              href={`/recipes/${recipe.id}/edit`}
+              data-testid="recipe-edit-link"
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            >
+              Edit
+            </Link>
+          ) : null}
           <Link
             href={`/calendar?addRecipe=${recipe.id}`}
             className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
@@ -182,8 +223,43 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
           >
             Add to Combination
           </Link>
+          {recipe.isDeleted ? (
+            <button
+              type="button"
+              data-testid="recipe-restore"
+              disabled={restoreMutation.isPending}
+              className="rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+              onClick={() => void restoreMutation.mutateAsync({ id: recipeId })}
+            >
+              {restoreMutation.isPending ? "Restoring…" : "Restore recipe"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="recipe-soft-delete"
+              disabled={softDeleteMutation.isPending}
+              className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Soft-delete “${recipe.title}”? It will leave browse/search but stay on existing plans with a deleted badge.`,
+                  )
+                ) {
+                  void softDeleteMutation.mutateAsync({ id: recipeId });
+                }
+              }}
+            >
+              {softDeleteMutation.isPending ? "Deleting…" : "Soft-delete"}
+            </button>
+          )}
         </div>
       </div>
+
+      {actionError ? (
+        <p className="text-sm text-red-600" role="alert" data-testid="recipe-action-error">
+          {actionError}
+        </p>
+      ) : null}
 
       <section>
         <h2 className="mb-2 text-lg font-semibold text-zinc-900">Ingredients</h2>

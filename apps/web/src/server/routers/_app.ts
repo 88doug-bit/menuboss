@@ -1,7 +1,9 @@
 /**
- * Root app router — Wave 1 content domain + Wave 2 mealPlan + family reads.
+ * Root app router — Wave 1 content domain + Wave 2 mealPlan + family reads
+ * + Wave 3 admin (Task 15).
  */
 import { createTRPCRouter } from "../trpc";
+import { adminRouter } from "./admin";
 import { categoryRouter } from "./category";
 import { chefIdeaRouter } from "./chefIdea";
 import { familyRouter } from "./family";
@@ -22,6 +24,7 @@ export const appRouter = createTRPCRouter({
   recipeCombination: recipeCombinationRouter,
   mealPlan: mealPlanRouter,
   family: familyRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

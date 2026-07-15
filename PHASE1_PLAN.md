@@ -32,7 +32,7 @@
 
 **Wave 2:** briefs grok_10 (mealPlan backend: `0004_meal_plan_rpc.sql` SECURITY INVOKER RPC + router + integration tests), grok_11 (auth UI + calendar + plan editor + realtime notify-then-refetch wiring), grok_12 (recipe/ChefIdea/combination/shopping-list screens + nav shell), grok_13 (Playwright E2E over §9.3 flows + Realtime Scenario-11 unshare-cutoff test + CI wiring). Claude-owned in Wave 2: `0005_auth_provisioning.sql` (SECURITY DEFINER on-signup hook + profile↔auth.users FK), security review of the 0004 RPC, full RLS grid harness (task backlog), Wave 2 QA gate. Gate: integration tests + §9.3 flow E2E (plan a shared meal) + Scenario 11.
 
-**Wave 3:** remaining screens (ChefIdea, combinations, decay paths, shopping list UI), PWA read-only offline, search, performance-budget E2E checks. Gate: full Phase 1 success criteria (Product PRD §13.2).
+**Wave 3:** briefs grok_14 (recipe/ingredient editors + admin-gated safety-profile editor), grok_15 (admin section: invites/members, portion categories, units, categories/tags, family settings, audit viewer — includes the one sanctioned new `admin` router), grok_16 (PWA read-only offline per D4, global search, performance-budget E2E for §12 P1–P5). Claude-owned: review of the admin router, Wave 3 QA gate. Done already: full RLS grid (`supabase/tests/rls/grid.test.sql`, 501 assertions, manifest-complete). Gate: full Phase 1 success criteria (Product PRD §13.2).
 
 ## Sequencing constraints
 

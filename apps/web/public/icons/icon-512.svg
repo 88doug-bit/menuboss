@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MenuBoss">
+  <rect width="512" height="512" rx="96" fill="#047857"/>
+  <circle cx="256" cy="208" r="74" fill="#ecfdf5"/>
+  <path d="M128 396c22-74 74-112 128-112s106 38 128 112" fill="none" stroke="#ecfdf5" stroke-width="32" stroke-linecap="round"/>
+  <path d="M192 138h128M256 106v64" stroke="#a7f3d0" stroke-width="22" stroke-linecap="round"/>
+</svg>

@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { clearClientState } from "@/lib/offline/persistQuery";
 import { createClient } from "@/lib/supabase/client";
 
 type SessionContextValue = {
@@ -48,8 +49,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next);
+    } = supabase.auth.onAuthStateChange((event, next) => {
+      // Shared-device hygiene: wipe ALL persisted client state whenever the
+      // session ends or changes identity — not only on the explicit sign-out
+      // button (token expiry / other-tab sign-out land here too).
+      setSession((prev) => {
+        const prevId = prev?.user?.id ?? null;
+        const nextId = next?.user?.id ?? null;
+        if (event === "SIGNED_OUT" || (prevId !== null && nextId !== prevId)) {
+          clearClientState();
+        }
+        return next;
+      });
       setLoading(false);
     });
 
@@ -62,6 +73,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+    // The next user of this browser must not inherit cached family data.
+    clearClientState();
     setSession(null);
   }, [supabase]);
 

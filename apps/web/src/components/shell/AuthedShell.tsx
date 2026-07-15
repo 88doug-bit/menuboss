@@ -2,6 +2,7 @@
 
 /**
  * Authenticated app shell. Gates on profile row (waiting-for-invite).
+ * Hosts global search (§8.8) and admin nav entry (Task 15, display-only gate).
  * <!-- COORDINATOR: 0005 auth provisioning -->
  */
 import Link from "next/link";
@@ -10,10 +11,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { useSession } from "@/providers/SessionProvider";
 import { WaitingForInvite } from "@/components/auth/WaitingForInvite";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+const BASE_NAV = [
   { href: "/calendar", label: "Calendar" },
   { href: "/recipes", label: "Recipes" },
   { href: "/ideas", label: "Ideas" },
@@ -33,6 +35,11 @@ export default function AppShellLayout({
     enabled: Boolean(user),
     retry: false,
   });
+
+  const isAdmin = meQuery.data?.profile.role === "admin";
+  const nav = isAdmin
+    ? [...BASE_NAV, { href: "/admin", label: "Admin" } as const]
+    : BASE_NAV;
 
   if (sessionLoading || (user && meQuery.isLoading)) {
     return (
@@ -61,18 +68,21 @@ export default function AppShellLayout({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2 sm:px-6">
           <Link
             href="/calendar"
-            className="text-sm font-semibold tracking-tight text-emerald-800"
+            className="shrink-0 text-sm font-semibold tracking-tight text-emerald-800"
           >
             MenuBoss
           </Link>
           <nav
-            className="hidden items-center gap-1 sm:flex"
+            className="hidden items-center gap-1 md:flex"
             aria-label="Primary"
           >
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
+                data-testid={
+                  item.href === "/admin" ? "nav-admin" : undefined
+                }
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium",
                   pathname.startsWith(item.href)
@@ -84,9 +94,10 @@ export default function AppShellLayout({
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
+          <GlobalSearch className="min-w-0 flex-1 sm:max-w-sm md:flex-none" />
+          <div className="flex shrink-0 items-center gap-2">
             {meQuery.data?.profile.displayName && (
-              <span className="hidden text-xs text-zinc-500 sm:inline">
+              <span className="hidden text-xs text-zinc-500 lg:inline">
                 {meQuery.data.profile.displayName}
               </span>
             )}
@@ -103,11 +114,19 @@ export default function AppShellLayout({
         className="sticky bottom-0 z-20 border-t border-zinc-200 bg-white sm:hidden"
         aria-label="Mobile primary"
       >
-        <ul className="grid grid-cols-4">
-          {NAV.map((item) => (
+        <ul
+          className={cn(
+            "grid",
+            isAdmin ? "grid-cols-5" : "grid-cols-4",
+          )}
+        >
+          {nav.map((item) => (
             <li key={item.href}>
               <Link
                 href={item.href}
+                data-testid={
+                  item.href === "/admin" ? "nav-admin-mobile" : undefined
+                }
                 className={cn(
                   "flex h-12 items-center justify-center text-xs font-medium",
                   pathname.startsWith(item.href)
