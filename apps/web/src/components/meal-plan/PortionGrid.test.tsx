@@ -97,17 +97,21 @@ describe("PortionGrid", () => {
 
     // Increase Adult Male count to 1
     await user.click(screen.getByLabelText("Increase Adult Male count"));
-    expect(screen.getByTestId("count-stepper-adult-male-value")).toHaveTextContent(
-      "1",
-    );
+    expect(
+      screen
+        .getByTestId("count-stepper-adult-male-value")
+        .querySelector("input"),
+    ).toHaveValue(1);
 
     // Increase athlete once → 1
     await user.click(
       screen.getByLabelText("Increase Adult Male athlete count"),
     );
     expect(
-      screen.getByTestId("athlete-stepper-adult-male-value"),
-    ).toHaveTextContent("1");
+      screen
+        .getByTestId("athlete-stepper-adult-male-value")
+        .querySelector("input"),
+    ).toHaveValue(1);
 
     // Cannot go above count
     const incAthlete = screen.getByLabelText(

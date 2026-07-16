@@ -33,7 +33,9 @@ export default defineConfig({
      */
     {
       name: "Mobile Chrome",
-      use: { ...devices["iPhone 14"] },
+      // iPhone 14 defaults to WebKit; pin chromium (the only browser CI
+      // installs) and keep the mobile viewport/touch emulation.
+      use: { ...devices["iPhone 14"], browserName: "chromium" },
       testMatch: /plan-shared-meal\.spec\.ts|capture-chef-idea\.spec\.ts/,
     },
   ],

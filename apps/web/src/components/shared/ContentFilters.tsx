@@ -75,6 +75,8 @@ export function ContentFilters({
   showTimeAndRating = true,
   showSafetyFlag = true,
   searchPlaceholder = "Search…",
+  tagTestIdPrefix = "filter-tag",
+  tagsDefaultOpen = false,
 }: {
   value: ContentFilterState;
   onChange: (next: ContentFilterState) => void;
@@ -83,6 +85,10 @@ export function ContentFilters({
   showTimeAndRating?: boolean;
   showSafetyFlag?: boolean;
   searchPlaceholder?: string;
+  /** data-testid prefix for tag filter chips (contract: `ideas-filter-tag-{id}` on /ideas). */
+  tagTestIdPrefix?: string;
+  /** Render the Tags disclosure expanded initially (contract: /ideas chips are directly clickable). */
+  tagsDefaultOpen?: boolean;
 }) {
   return (
     <div
@@ -173,7 +179,7 @@ export function ContentFilters({
       ) : null}
 
       {tags.length > 0 ? (
-        <details className="text-sm">
+        <details className="text-sm" open={tagsDefaultOpen}>
           <summary className="cursor-pointer font-medium text-zinc-800">
             Tags
           </summary>
@@ -184,7 +190,7 @@ export function ContentFilters({
                 <li key={tag.id}>
                   <button
                     type="button"
-                    data-testid={`filter-tag-${tag.id}`}
+                    data-testid={`${tagTestIdPrefix}-${tag.id}`}
                     onClick={() =>
                       onChange({
                         ...value,

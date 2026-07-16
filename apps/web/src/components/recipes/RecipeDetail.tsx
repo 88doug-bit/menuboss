@@ -97,6 +97,23 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
     }),
   );
 
+  // Linked-recipe search for decay-path entries (§9.3 Flow 2).
+  const [linkQuery, setLinkQuery] = useState("");
+  const linkSearchQuery = useQuery({
+    ...trpc.recipe.list.queryOptions({
+      q: linkQuery.trim() || undefined,
+      limit: 8,
+    }),
+    enabled: linkQuery.trim().length > 0,
+  });
+  const linkResults = useMemo(
+    () =>
+      (linkSearchQuery.data?.items ?? [])
+        .filter((r) => r.id !== recipeId)
+        .map((r) => ({ id: r.id, title: r.title })),
+    [linkSearchQuery.data, recipeId],
+  );
+
   const softDeleteMutation = useMutation(
     trpc.recipe.softDelete.mutationOptions({
       onSuccess: async () => {
@@ -163,7 +180,9 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
     <article data-testid="recipe-detail" className="mx-auto max-w-2xl space-y-6">
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-bold text-zinc-900">{recipe.title}</h1>
+          <h1 data-testid="recipe-title" className="text-2xl font-bold text-zinc-900">
+            {recipe.title}
+          </h1>
           {recipe.isDeleted ? <DeletedBadge /> : null}
         </div>
         {recipe.description ? (
@@ -292,6 +311,11 @@ export function RecipeDetail({ recipeId }: { recipeId: string }) {
         entries={decay}
         saving={decayMutation.isPending}
         recipeTitles={recipeTitles}
+        linkSearch={{
+          query: linkQuery,
+          onQueryChange: setLinkQuery,
+          results: linkResults,
+        }}
         onSave={async (next) => {
           await decayMutation.mutateAsync({
             id: recipeId,

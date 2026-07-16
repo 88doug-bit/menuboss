@@ -95,7 +95,9 @@ END;
 $$;
 
 -- Not user-callable: only trigger functions (definer contexts) reach it.
-REVOKE ALL ON FUNCTION provision_profile_from_invite(uuid, text) FROM PUBLIC;
+-- Supabase's ALTER DEFAULT PRIVILEGES grants EXECUTE to anon/authenticated
+-- explicitly at creation time, so revoking PUBLIC alone is not enough.
+REVOKE ALL ON FUNCTION provision_profile_from_invite(uuid, text) FROM PUBLIC, anon, authenticated;
 
 -- ===========================================================================
 -- 3. Direction A — invite created after signup: provision immediately if the
@@ -121,7 +123,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION handle_new_invite() FROM PUBLIC;
+REVOKE ALL ON FUNCTION handle_new_invite() FROM PUBLIC, anon, authenticated;
 
 CREATE TRIGGER trg_invite_provision
   AFTER INSERT ON household_invite
@@ -145,7 +147,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION handle_new_auth_user() FROM PUBLIC;
+REVOKE ALL ON FUNCTION handle_new_auth_user() FROM PUBLIC, anon, authenticated;
 
 DO $$
 BEGIN

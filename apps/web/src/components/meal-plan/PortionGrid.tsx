@@ -196,7 +196,10 @@ export function PortionGrid({
                     "border-t border-zinc-100",
                     deactivated && "bg-zinc-50/80",
                   )}
-                  data-testid={`portion-row-${cat.slug}`}
+                  // E2E contract (§9.3): rows are keyed by portion CATEGORY ID
+                  // (seed UUID), not slug. Slug-keyed rows remain only in the
+                  // admin PortionCategoriesPanel.
+                  data-testid={`portion-row-${cat.id}`}
                 >
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -223,6 +226,7 @@ export function PortionGrid({
                       disabled={rowReadOnly}
                       onChange={(n) => setCount(cat.id, n)}
                       testId={`count-stepper-${cat.slug}`}
+                      inputTestId="portion-count-input"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -233,6 +237,7 @@ export function PortionGrid({
                       disabled={rowReadOnly}
                       onChange={(n) => setAthleteCount(cat.id, n)}
                       testId={`athlete-stepper-${cat.slug}`}
+                      inputTestId="portion-athlete-input"
                     />
                   </td>
                   <td className="px-3 py-2 tabular-nums text-zinc-700">
@@ -255,7 +260,11 @@ export function PortionGrid({
           className="text-lg font-semibold tabular-nums text-emerald-800"
           data-testid="portion-total"
         >
-          {preview.error ? "—" : `${roundOz(preview.total)} oz`}
+          {/* E2E contract alias: `portion-live-total` is the same value as
+              `portion-total` (kept — referenced by unit tests). */}
+          <span data-testid="portion-live-total">
+            {preview.error ? "—" : `${roundOz(preview.total)} oz`}
+          </span>
         </span>
       </div>
       {preview.error && (
@@ -274,6 +283,7 @@ function Stepper({
   max,
   ariaLabel,
   testId,
+  inputTestId,
 }: {
   value: number;
   onChange: (n: number) => void;
@@ -281,8 +291,20 @@ function Stepper({
   max?: number;
   ariaLabel: string;
   testId?: string;
+  /** data-testid for the editable value input (E2E contract). */
+  inputTestId?: string;
 }) {
   const atMax = max !== undefined && value >= max;
+
+  function commitInput(raw: string) {
+    const n = Number.parseInt(raw, 10);
+    if (Number.isNaN(n)) {
+      onChange(0);
+      return;
+    }
+    const clamped = Math.max(0, max !== undefined ? Math.min(n, max) : n);
+    onChange(clamped);
+  }
 
   return (
     <div
@@ -307,7 +329,18 @@ function Stepper({
         aria-live="polite"
         data-testid={testId ? `${testId}-value` : undefined}
       >
-        {value}
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={max}
+          aria-label={ariaLabel}
+          data-testid={inputTestId}
+          disabled={disabled}
+          className="w-12 rounded border border-transparent bg-transparent text-center tabular-nums hover:border-zinc-200 focus:border-zinc-300 focus:outline-none disabled:opacity-50"
+          value={value}
+          onChange={(e) => commitInput(e.target.value)}
+        />
       </span>
       <Button
         type="button"

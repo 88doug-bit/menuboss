@@ -7,7 +7,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   mealPlanUpsertInputSchema,
   type MealPlanUpsertInput,
@@ -23,9 +28,96 @@ import {
   type PortionRequirementValue,
 } from "@/components/meal-plan/PortionGrid";
 import { ShareChecklist } from "@/components/meal-plan/ShareChecklist";
+import {
+  SafetyNoteCallout,
+  hasMercuryProfile,
+} from "@/components/recipes/SafetyNoteCallout";
 import { toIsoDate } from "@/lib/utils";
 
 const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
+
+/**
+ * Search-typeahead recipe picker for an assignment row (E2E contract:
+ * `recipe-picker-search` / `recipe-picker-result`). Coexists with the
+ * select below it; picking a result sets the same form field.
+ */
+function RecipeTypeahead({
+  onPick,
+}: {
+  onPick: (recipe: { id: string; title: string }) => void;
+}) {
+  const trpc = useTRPC();
+  const [q, setQ] = useState("");
+  const searchQuery = useQuery({
+    ...trpc.recipe.list.queryOptions({ q: q.trim() || undefined, limit: 8 }),
+    enabled: q.trim().length > 0,
+  });
+
+  return (
+    <div className="relative">
+      <Input
+        data-testid="recipe-picker-search"
+        placeholder="Search recipes…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      {q.trim() && (searchQuery.data?.items?.length ?? 0) > 0 ? (
+        <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+          {(searchQuery.data?.items ?? []).map(
+            (r: { id: string; title: string }) => (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  data-testid="recipe-picker-result"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50"
+                  onClick={() => {
+                    onPick(r);
+                    setQ("");
+                  }}
+                >
+                  {r.title}
+                </button>
+              </li>
+            ),
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Inline mercury/food-safety callout for the selected recipe (E2E contract:
+ * `food-safety-note`). Fetches the recipe's ingredient safety profiles the
+ * same way RecipeDetail does.
+ */
+function AssignmentSafetyNote({ recipeId }: { recipeId?: string }) {
+  const trpc = useTRPC();
+  const detailQuery = useQuery({
+    ...trpc.recipe.byId.queryOptions({ id: recipeId! }),
+    enabled: Boolean(recipeId),
+  });
+  const ingredientIds = useMemo(
+    () => (detailQuery.data?.ingredients ?? []).map((i) => i.ingredientId),
+    [detailQuery.data?.ingredients],
+  );
+  const ingredientQueries = useQueries({
+    queries: ingredientIds.map((id) =>
+      trpc.ingredient.byId.queryOptions({ id }),
+    ),
+  });
+
+  const mercury = ingredientQueries
+    .map((q) => q.data?.foodSafetyProfile)
+    .find(hasMercuryProfile);
+
+  if (!recipeId || !mercury) return null;
+  return (
+    <div data-testid="food-safety-note">
+      <SafetyNoteCallout mercury={mercury.mercury} />
+    </div>
+  );
+}
 
 export type MealPlanEditorProps = {
   /** Existing plan id for edit; omit for create. */
@@ -202,6 +294,7 @@ export function MealPlanEditor({
   return (
     <form
       className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6"
+      data-testid="meal-plan-editor"
       onSubmit={form.handleSubmit((values) => {
         setFormError(null);
         const payload: MealPlanUpsertInput = {
@@ -218,12 +311,23 @@ export function MealPlanEditor({
     >
       <Card>
         <CardHeader>
-          <CardTitle>{planId ? "Edit meal plan" : "New meal plan"}</CardTitle>
+          {/* E2E contract alias: a successful save redirects to
+              /plans/{id}/edit, so the edit-mode heading doubles as the
+              `meal-plan-save-success` affordance (no dedicated toast exists). */}
+          <CardTitle
+            data-testid={planId ? "meal-plan-save-success" : undefined}
+          >
+            {planId ? "Edit meal plan" : "New meal plan"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" {...form.register("title")} />
+            <Input
+              id="title"
+              data-testid="meal-plan-title-input"
+              {...form.register("title")}
+            />
             {form.formState.errors.title && (
               <p className="text-xs text-red-600">
                 {form.formState.errors.title.message}
@@ -313,6 +417,7 @@ export function MealPlanEditor({
             type="button"
             size="sm"
             variant="outline"
+            data-testid="assignment-add-row"
             onClick={() =>
               appendAssignment({
                 recipeId: recipesQuery.data?.items?.[0]?.id ?? "",
@@ -339,6 +444,14 @@ export function MealPlanEditor({
             >
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <Label htmlFor={`assignments.${index}.recipeId`}>Recipe</Label>
+                <RecipeTypeahead
+                  onPick={(r) =>
+                    form.setValue(`assignments.${index}.recipeId`, r.id, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                />
                 <select
                   id={`assignments.${index}.recipeId`}
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm"
@@ -353,6 +466,9 @@ export function MealPlanEditor({
                     ),
                   )}
                 </select>
+                <AssignmentSafetyNote
+                  recipeId={form.watch(`assignments.${index}.recipeId`)}
+                />
               </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor={`assignments.${index}.assignmentDate`}>
@@ -423,7 +539,11 @@ export function MealPlanEditor({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={upsert.isPending}>
+        <Button
+          type="submit"
+          disabled={upsert.isPending}
+          data-testid="meal-plan-save"
+        >
           {upsert.isPending ? "Saving…" : "Save plan"}
         </Button>
         <Button

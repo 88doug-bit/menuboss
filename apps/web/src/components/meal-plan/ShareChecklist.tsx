@@ -70,10 +70,14 @@ export function ShareChecklist({
                   isCreator && "bg-zinc-50",
                   disabled && "cursor-not-allowed opacity-60",
                 )}
+                // E2E contract (§9.3): `share-household-{householdId}` is
+                // checked via Playwright `.check()`, which retargets a
+                // wrapping <label> to its checkbox control. The checkbox
+                // keeps `share-checkbox-*` (referenced by unit tests).
                 data-testid={
                   isCreator
                     ? "share-row-creator"
-                    : `share-row-${h.id}`
+                    : `share-household-${h.id}`
                 }
               >
                 <input

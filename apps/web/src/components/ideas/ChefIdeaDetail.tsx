@@ -58,7 +58,12 @@ export function ChefIdeaDetail({ ideaId }: { ideaId: string }) {
 
   return (
     <article className="mx-auto max-w-xl space-y-4" data-testid="chef-idea-detail">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Post-save redirect lands here — this row doubles as the §9.3 "save
+          succeeded" affordance (contract: capture-idea-success). */}
+      <div
+        className="flex flex-wrap items-center gap-2"
+        data-testid="capture-idea-success"
+      >
         <StatusChip
           tone={
             idea.status === "idea" ||
@@ -76,7 +81,9 @@ export function ChefIdeaDetail({ ideaId }: { ideaId: string }) {
           <span className="text-sm text-zinc-500">Priority {idea.priority}</span>
         ) : null}
       </div>
-      <h1 className="text-2xl font-bold text-zinc-900">{idea.title}</h1>
+      <h1 className="text-2xl font-bold text-zinc-900" data-testid="chef-idea-title">
+        {idea.title}
+      </h1>
       {idea.source ? (
         <p className="text-sm text-zinc-500">Source: {idea.source}</p>
       ) : null}

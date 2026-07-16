@@ -54,6 +54,9 @@ describe("LeftoverDecayPath", () => {
       />,
     );
 
+    // Section defaults closed (E2E contract: toggle click always opens).
+    await user.click(screen.getByRole("button", { name: /Creative Leftovers/i }));
+
     expect(screen.getByTestId("decay-entry-0")).toHaveTextContent("Tacos");
     const link = screen.getByRole("link", { name: "Pork Tacos" });
     expect(link).toHaveAttribute("href", `/recipes/${linkedId}`);
@@ -86,6 +89,7 @@ describe("LeftoverDecayPath", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: /Creative Leftovers/i }));
     await user.click(screen.getByTestId("decay-remove-0"));
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith([{ use: "Hash" }]);

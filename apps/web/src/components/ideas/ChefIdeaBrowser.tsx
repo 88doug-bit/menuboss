@@ -71,7 +71,7 @@ export function ChefIdeaBrowser({
   const tags = Array.isArray(tagsQuery.data) ? tagsQuery.data : [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="ideas-browser">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Status filter">
           <button
@@ -105,9 +105,9 @@ export function ChefIdeaBrowser({
         </div>
         <button
           type="button"
-          data-testid="capture-idea-header"
+          data-testid="capture-idea-open"
           onClick={onCapture}
-          className="hidden rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700 sm:inline-flex"
+          className="inline-flex rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700"
         >
           + Capture Idea
         </button>
@@ -121,6 +121,8 @@ export function ChefIdeaBrowser({
         showTimeAndRating={false}
         showSafetyFlag={false}
         searchPlaceholder="Search ideas…"
+        tagTestIdPrefix="ideas-filter-tag"
+        tagsDefaultOpen
       />
 
       {listQuery.isLoading ? (
@@ -147,7 +149,7 @@ export function ChefIdeaBrowser({
             <li key={idea.id}>
               <Link
                 href={`/ideas/${idea.id}`}
-                data-testid="chef-idea-card"
+                data-testid="idea-card"
                 className="block rounded-xl border border-sky-200 bg-sky-50/40 p-4 hover:border-sky-400"
               >
                 <div className="flex items-center gap-2">
@@ -282,7 +284,7 @@ export function ChefIdeaCaptureForm({
             Title
             <input
               required
-              data-testid="idea-title"
+              data-testid="chef-idea-title-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
@@ -291,7 +293,7 @@ export function ChefIdeaCaptureForm({
           <label className="block text-sm font-medium text-zinc-700">
             Notes
             <textarea
-              data-testid="idea-notes"
+              data-testid="chef-idea-notes-input"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
@@ -301,7 +303,7 @@ export function ChefIdeaCaptureForm({
           <label className="block text-sm font-medium text-zinc-700">
             Source
             <input
-              data-testid="idea-source"
+              data-testid="chef-idea-source-input"
               value={source}
               onChange={(e) => setSource(e.target.value)}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
@@ -373,6 +375,7 @@ export function ChefIdeaCaptureForm({
                   <li key={t.id}>
                     <button
                       type="button"
+                      data-testid={`tag-picker-${t.id}`}
                       onClick={() => setTagIds((ids) => toggle(ids, t.id))}
                       className={[
                         "rounded-full px-2 py-0.5 text-xs",
@@ -406,6 +409,7 @@ export function ChefIdeaCaptureForm({
           </button>
           <button
             type="submit"
+            data-testid="chef-idea-save"
             disabled={createMutation.isPending}
             className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
           >

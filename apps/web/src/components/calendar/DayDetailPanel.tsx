@@ -49,7 +49,11 @@ export function DayDetailPanel({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={onAddToPlan}>
+            <Button
+              size="sm"
+              onClick={onAddToPlan}
+              data-testid="calendar-add-to-plan"
+            >
               Add to plan
             </Button>
           </div>

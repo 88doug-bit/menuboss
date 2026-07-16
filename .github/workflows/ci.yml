@@ -65,7 +65,9 @@ jobs:
           supabase migration list
 
       - name: Run pgTAP suites (RLS matrix + function tests)
-        run: supabase test db
+        # Explicit paths: supabase/tests/local/ holds the portable-gate stub +
+        # pgTAP shim, which are not pgTAP test files and must not be swept in.
+        run: supabase test db supabase/tests/rls supabase/tests/functions
 
       - name: Contract test (TS portion-calc ↔ SQL weekly_protein_rollup)
         env:

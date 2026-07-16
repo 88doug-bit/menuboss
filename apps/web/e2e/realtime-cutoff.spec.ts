@@ -11,7 +11,14 @@
  *    for subsequent edits (collector polled over a 5 s window).
  * 3. Belt-and-braces: member_b refetch of the plan returns zero rows (notify-
  *    then-refetch fallback is safe even if an event leaked).
- * 4. member_c control: subscribed from the start, receives nothing at any point.
+ * 4. member_c control: subscribed from the start, receives NO INSERT/UPDATE
+ *    events at any point (those are WALRUS/RLS-filtered per subscriber).
+ *    Platform caveat: Supabase Realtime CANNOT RLS-filter DELETE events (the
+ *    row is gone before policies can run), so DELETEs broadcast to every
+ *    table subscriber carrying ONLY replica-identity (PK) columns. member_c
+ *    therefore MAY observe the unshare's meal_plan_household DELETE as
+ *    id-metadata; the assertion pins that to identifier-only payloads —
+ *    any content field, or any other table's DELETE, still fails as a leak.
  *
  * ⚠ If assertion 2 fails on the real stack:
  *    - Treat it as a SECURITY finding, not a flake.
@@ -33,6 +40,9 @@ type ChangeEvent = {
   table: string;
   eventType: string;
   at: number;
+  /** Raw payload rows so leak assertions can inspect exactly what arrived. */
+  newRow?: Record<string, unknown>;
+  oldRow?: Record<string, unknown>;
 };
 
 async function subscribePlanTables(
@@ -80,6 +90,8 @@ async function subscribePlanTables(
           table,
           eventType: payload.eventType,
           at: Date.now(),
+          newRow: payload.new as Record<string, unknown> | undefined,
+          oldRow: payload.old as Record<string, unknown> | undefined,
         });
       },
     );
@@ -153,27 +165,42 @@ e2eDescribe("Scenario 11 realtime unshare cutoff", () => {
 
     try {
       // ---- 1. Positive parity: member_a edit → member_b receives event ----
+      // SUBSCRIBED acks the channel join, but the postgres_changes
+      // subscription registers in the database a beat later — a single
+      // immediate edit can slip past the WAL poller and never be delivered.
+      // Retry-edit until the first event proves the subscription is live;
+      // any received edit event satisfies the parity assertion.
       const beforeParity = eventsB.length;
-      const { error: editErr } = await memberA
-        .from("meal_plan")
-        .update({ title: `E2E Parity Edit ${Date.now()}` })
-        .eq("id", planId);
-      if (editErr) throw new Error(`parity edit: ${editErr.message}`);
+      let parityDelivered = false;
+      for (let attempt = 1; attempt <= 5 && !parityDelivered; attempt++) {
+        const { error: editErr } = await memberA
+          .from("meal_plan")
+          .update({ title: `E2E Parity Edit ${attempt} ${Date.now()}` })
+          .eq("id", planId);
+        if (editErr) throw new Error(`parity edit ${attempt}: ${editErr.message}`);
 
-      await expect
-        .poll(() => eventsB.length, {
-          timeout: 10_000,
-          intervals: [100, 200, 400, 800],
-          message:
-            "Scenario 11 assertion 1: member_b must receive realtime event on shared-plan edit",
-        })
-        .toBeGreaterThan(beforeParity);
-
-      // member_c must still be silent
+        try {
+          await expect
+            .poll(() => eventsB.length, {
+              timeout: 2_000,
+              intervals: [100, 200, 400],
+            })
+            .toBeGreaterThan(beforeParity);
+          parityDelivered = true;
+        } catch {
+          // subscription not live yet — edit again
+        }
+      }
       expect(
-        eventsC.length,
-        "Scenario 11 assertion 4 (during parity): member_c must receive no events",
-      ).toBe(0);
+        parityDelivered,
+        "Scenario 11 assertion 1: member_b must receive realtime event on shared-plan edit (5 attempts)",
+      ).toBe(true);
+
+      // member_c must still be silent for RLS-filterable event types
+      expect(
+        eventsC.filter((e) => e.eventType !== "DELETE"),
+        "Scenario 11 assertion 4 (during parity): member_c must receive no INSERT/UPDATE events",
+      ).toHaveLength(0);
 
       // ---- 2. Unshare B, then edit again; B must receive no further events ----
       const { error: unshareErr, count: unshareCount } = await memberA
@@ -250,11 +277,34 @@ e2eDescribe("Scenario 11 realtime unshare cutoff", () => {
         "Scenario 11 assertion 3: member_b refetch must return zero rows after unshare",
       ).toHaveLength(0);
 
-      // ---- 4. member_c never received events ----
+      // ---- 4. member_c: no RLS-filterable events; DELETEs id-metadata only ----
+      const cNonDelete = eventsC.filter((e) => e.eventType !== "DELETE");
       expect(
-        eventsC.length,
-        "Scenario 11 assertion 4: member_c control must receive nothing at any point",
-      ).toBe(0);
+        cNonDelete,
+        `Scenario 11 assertion 4: member_c control must receive no INSERT/UPDATE events (got ${JSON.stringify(cNonDelete)})`,
+      ).toHaveLength(0);
+
+      // DELETE broadcasts are unavoidable (not RLS-filtered — see header).
+      // They must be the unshare's membership row only, and must carry ONLY
+      // replica-identity columns — any content field is a real leak.
+      const IDENTIFIER_COLS = new Set(["id", "meal_plan_id", "household_id"]);
+      for (const e of eventsC.filter((ev) => ev.eventType === "DELETE")) {
+        expect(
+          e.table,
+          `SECURITY: member_c saw a DELETE on ${e.table} — only meal_plan_household unshare DELETEs are expected`,
+        ).toBe("meal_plan_household");
+        expect(
+          Object.keys(e.newRow ?? {}),
+          "SECURITY: DELETE payload must carry no new-row data",
+        ).toHaveLength(0);
+        const contentCols = Object.keys(e.oldRow ?? {}).filter(
+          (k) => !IDENTIFIER_COLS.has(k),
+        );
+        expect(
+          contentCols,
+          `SECURITY: member_c DELETE payload leaked content columns: ${contentCols.join(", ")}`,
+        ).toHaveLength(0);
+      }
     } finally {
       await memberB.removeChannel(channelB);
       await memberC.removeChannel(channelC);

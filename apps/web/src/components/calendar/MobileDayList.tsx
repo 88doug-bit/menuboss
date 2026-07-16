@@ -71,6 +71,7 @@ export function MobileDayList({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600",
                   "hover:border-emerald-300",
                 )}
+                data-testid="calendar-day-cell"
                 onClick={() => onSelectDay(day)}
                 aria-label={`${format(day, "EEEE, MMM d")}: ${dayEvents.length} items`}
               >
@@ -95,8 +96,14 @@ export function MobileDayList({
                             ? "bg-emerald-700"
                             : "bg-zinc-400",
                         )}
+                        data-testid="calendar-plan-event"
                       >
                         {ev.title}
+                        {/* E2E contract: event text must include plan title
+                            (visually unchanged). */}
+                        <span className="sr-only">
+                          {ev.resource.planTitle}
+                        </span>
                       </li>
                     ))}
                   </ul>

@@ -93,6 +93,7 @@ export async function ensureContentFixtures(
         description: "Shopping list plan A — mass flour + optional parsley.",
         yield_servings: 4,
         created_by_user_id: uid,
+        leftover_decay_path: [],
       },
       {
         id: f.shoppingRecipeBId,
@@ -100,6 +101,7 @@ export async function ensureContentFixtures(
         description: "Shopping list plan B — volume flour (cross-dimension).",
         yield_servings: 4,
         created_by_user_id: uid,
+        leftover_decay_path: [],
       },
     ],
     { onConflict: "id" },

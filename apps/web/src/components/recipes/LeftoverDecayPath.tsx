@@ -13,22 +13,43 @@ export type DecayPathEntry = {
   linkedRecipeIds?: string[];
 };
 
+export type LinkableRecipe = { id: string; title: string };
+
 export function LeftoverDecayPath({
   entries,
   onSave,
   saving = false,
   recipeTitles = {},
+  linkSearch,
 }: {
   entries: DecayPathEntry[];
   onSave: (next: DecayPathEntry[]) => void | Promise<void>;
   saving?: boolean;
   /** Optional map recipeId → title for linked chips. */
   recipeTitles?: Record<string, string>;
+  /** Optional linked-recipe search (parent owns query state + results). */
+  linkSearch?: {
+    query: string;
+    onQueryChange: (q: string) => void;
+    results: LinkableRecipe[];
+  };
 }) {
-  const [open, setOpen] = useState(entries.length > 0);
+  const [open, setOpen] = useState(false);
   const [draftUse, setDraftUse] = useState("");
   const [draftNotes, setDraftNotes] = useState("");
+  const [draftLinks, setDraftLinks] = useState<LinkableRecipe[]>([]);
+  // Titles of recipes picked in this session, so chips show real names
+  // without the parent refetching titles per id.
+  const [pickedTitles, setPickedTitles] = useState<Record<string, string>>({});
   const [editIndex, setEditIndex] = useState<number | null>(null);
+
+  function pickLink(recipe: LinkableRecipe) {
+    setDraftLinks((prev) =>
+      prev.some((l) => l.id === recipe.id) ? prev : [...prev, recipe],
+    );
+    setPickedTitles((prev) => ({ ...prev, [recipe.id]: recipe.title }));
+    linkSearch?.onQueryChange("");
+  }
 
   async function commitAdd() {
     const use = draftUse.trim();
@@ -38,11 +59,15 @@ export function LeftoverDecayPath({
       {
         use,
         notes: draftNotes.trim() || undefined,
+        linkedRecipeIds: draftLinks.length
+          ? draftLinks.map((l) => l.id)
+          : undefined,
       },
     ];
     await onSave(next);
     setDraftUse("");
     setDraftNotes("");
+    setDraftLinks([]);
   }
 
   async function commitEdit(index: number) {
@@ -82,6 +107,7 @@ export function LeftoverDecayPath({
     >
       <button
         type="button"
+        data-testid="leftover-section-toggle"
         className="flex w-full items-center justify-between px-4 py-3 text-left"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
@@ -152,7 +178,7 @@ export function LeftoverDecayPath({
                       </div>
                     </div>
                   ) : (
-                    <>
+                    <div data-testid="leftover-entry">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium text-zinc-900">{entry.use}</p>
@@ -188,15 +214,18 @@ export function LeftoverDecayPath({
                             <li key={id}>
                               <Link
                                 href={`/recipes/${id}`}
+                                data-testid="leftover-linked-recipe"
                                 className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
                               >
-                                {recipeTitles[id] ?? "Linked recipe"}
+                                {pickedTitles[id] ??
+                                  recipeTitles[id] ??
+                                  "Linked recipe"}
                               </Link>
                             </li>
                           ))}
                         </ul>
                       ) : null}
-                    </>
+                    </div>
                   )}
                 </li>
               ))}
@@ -205,13 +234,16 @@ export function LeftoverDecayPath({
 
           {editIndex === null ? (
             <div
-              data-testid="decay-add-form"
+              data-testid="leftover-add-entry"
               className="space-y-2 rounded-lg border border-dashed border-zinc-300 p-3"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Add leftover idea
               </p>
-              <label className="block text-xs font-medium text-zinc-600">
+              <label
+                data-testid="leftover-use-input"
+                className="block text-xs font-medium text-zinc-600"
+              >
                 Use
                 <input
                   data-testid="decay-add-use"
@@ -221,7 +253,10 @@ export function LeftoverDecayPath({
                   onChange={(e) => setDraftUse(e.target.value)}
                 />
               </label>
-              <label className="block text-xs font-medium text-zinc-600">
+              <label
+                data-testid="leftover-notes-input"
+                className="block text-xs font-medium text-zinc-600"
+              >
                 Notes
                 <input
                   data-testid="decay-add-notes"
@@ -231,6 +266,62 @@ export function LeftoverDecayPath({
                   onChange={(e) => setDraftNotes(e.target.value)}
                 />
               </label>
+              {linkSearch ? (
+                <div className="space-y-1">
+                  <label
+                    data-testid="leftover-link-recipe-search"
+                    className="block text-xs font-medium text-zinc-600"
+                  >
+                    Link a recipe
+                    <input
+                      className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                      placeholder="Search recipes to link"
+                      value={linkSearch.query}
+                      onChange={(e) => linkSearch.onQueryChange(e.target.value)}
+                    />
+                  </label>
+                  {linkSearch.query.trim() && linkSearch.results.length ? (
+                    <ul className="max-h-40 overflow-y-auto rounded-lg border border-zinc-200 bg-white">
+                      {linkSearch.results.map((r) => (
+                        <li key={r.id}>
+                          <button
+                            type="button"
+                            data-testid="leftover-link-recipe-result"
+                            className="w-full px-2 py-1.5 text-left text-sm hover:bg-emerald-50"
+                            onClick={() => pickLink(r)}
+                          >
+                            {r.title}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {draftLinks.length ? (
+                    <ul className="flex flex-wrap gap-2">
+                      {draftLinks.map((l) => (
+                        <li
+                          key={l.id}
+                          className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                        >
+                          {l.title}
+                          <button
+                            type="button"
+                            aria-label={`Remove linked recipe ${l.title}`}
+                            className="text-emerald-700 hover:text-emerald-900"
+                            onClick={() =>
+                              setDraftLinks((prev) =>
+                                prev.filter((x) => x.id !== l.id),
+                              )
+                            }
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
               <button
                 type="button"
                 data-testid="decay-add-submit"
@@ -238,7 +329,7 @@ export function LeftoverDecayPath({
                 className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                 onClick={() => void commitAdd()}
               >
-                Add idea
+                <span data-testid="leftover-save-entry">Add idea</span>
               </button>
             </div>
           ) : null}

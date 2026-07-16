@@ -1,5 +1,6 @@
 /**
- * Shopping list screen — plan ids via ?planIds=id1,id2 (calendar handoff).
+ * Shopping list screen — plan ids via ?mealPlanIds=id1,id2 (calendar handoff,
+ * E2E contract); legacy ?planIds= / ?plans= accepted as fallbacks.
  */
 "use client";
 
@@ -14,7 +15,11 @@ import { useTRPC } from "@/lib/trpc/client";
 function ShoppingPageInner() {
   const trpc = useTRPC();
   const searchParams = useSearchParams();
-  const fromQuery = searchParams.get("planIds") ?? searchParams.get("plans") ?? "";
+  const fromQuery =
+    searchParams.get("mealPlanIds") ??
+    searchParams.get("planIds") ??
+    searchParams.get("plans") ??
+    "";
   const [manualIds, setManualIds] = useState("");
 
   const planIds = useMemo(() => {

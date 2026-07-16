@@ -322,6 +322,7 @@ export function GlobalSearch({ className }: { className?: string }) {
               key={`${hit.kind}-${hit.id}`}
               role="option"
               aria-selected={index === activeIndex}
+              data-testid="global-search-result"
             >
               <button
                 type="button"
@@ -384,7 +385,7 @@ export function GlobalSearch({ className }: { className?: string }) {
   return (
     <div className={cn("relative", className)} data-testid="global-search">
       {/* Desktop inline search */}
-      <div className="relative hidden min-w-[14rem] max-w-sm flex-1 sm:block md:min-w-[18rem]">
+      <div className="relative block min-w-0 max-w-sm flex-1 sm:min-w-[14rem] md:min-w-[18rem]">
         <input
           ref={desktopInputRef}
           type="search"

@@ -5,11 +5,12 @@
  * react-big-calendar week (default) + month; mobile day list under sm.
  * Shared vs private styling, protein rollup strip, quick actions.
  */
-import { useCallback, useMemo, useState } from "react";
+import { cloneElement, useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
   dateFnsLocalizer,
+  type DateCellWrapperProps,
   type EventProps,
   type View,
 } from "react-big-calendar";
@@ -28,6 +29,7 @@ import { enUS } from "date-fns/locale";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTRPC } from "@/trpc/client";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useRealtimePlanInvalidation } from "@/hooks/useRealtimePlanInvalidation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +64,17 @@ export type CalendarAssignmentEvent = {
   };
 };
 
+/**
+ * E2E testid contract (§9.3): tag each week/month background day cell as
+ * `calendar-day-cell` by cloning react-big-calendar's own cell element —
+ * no extra wrapper markup, layout, or behavior change.
+ */
+function DateCellWrapper({ children }: DateCellWrapperProps) {
+  return cloneElement(children, {
+    "data-testid": "calendar-day-cell",
+  } as Record<string, unknown>);
+}
+
 function rangeForView(date: Date, view: View): { start: string; end: string } {
   if (view === "month") {
     const monthStart = startOfMonth(date);
@@ -83,6 +96,8 @@ export function CalendarDashboard() {
   const [date, setDate] = useState(() => new Date());
   const [view, setView] = useState<View>("week");
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  // Mount exactly one variant (E2E strict-mode + hidden-click contract).
+  const isDesktop = useMediaQuery("(min-width: 640px)");
 
   const range = useMemo(() => rangeForView(date, view), [date, view]);
 
@@ -157,6 +172,7 @@ export function CalendarDashboard() {
             shared ? "font-semibold" : "font-normal opacity-90",
           )}
           title={`${event.resource.planTitle} — ${event.title}`}
+          data-testid="calendar-plan-event"
         >
           {shared && (
             <span aria-hidden className="inline-block" title="Shared plan">
@@ -164,9 +180,32 @@ export function CalendarDashboard() {
             </span>
           )}
           <span className="truncate">{event.title}</span>
+          {/* E2E contract: chip text must include the plan title (visually
+              unchanged — already conveyed via the title tooltip above). */}
+          <span className="sr-only">{event.resource.planTitle}</span>
         </span>
       );
     },
+    [],
+  );
+
+  /**
+   * Week/month day-column header rendered as a real button so the E2E
+   * `calendar-day-cell` click has a visible, stably-sized target (rbc's
+   * background cells can be zero-height). Clicking opens the day detail,
+   * same as selecting a slot.
+   */
+  const DayHeader = useCallback(
+    ({ date: headerDate, label }: { date: Date; label: string }) => (
+      <button
+        type="button"
+        data-testid="calendar-day-cell"
+        className="w-full truncate px-1 text-center hover:underline"
+        onClick={() => setSelectedDay(headerDate)}
+      >
+        {label}
+      </button>
+    ),
     [],
   );
 
@@ -198,11 +237,14 @@ export function CalendarDashboard() {
 
   const shoppingHref =
     selectedPlanIds.length > 0
-      ? `/shopping?plans=${selectedPlanIds.join(",")}`
+      ? `/shopping?mealPlanIds=${selectedPlanIds.join(",")}`
       : "/shopping";
 
   return (
-    <div className="flex flex-col gap-4 p-3 sm:p-6">
+    <div
+      className="flex flex-col gap-4 p-3 sm:p-6"
+      data-testid="calendar-week-grid"
+    >
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-zinc-900">
@@ -226,8 +268,9 @@ export function CalendarDashboard() {
         loading={rollupQuery.isLoading}
       />
 
-      {/* Desktop / tablet calendar */}
-      <div className="hidden sm:block">
+      {/* Desktop / tablet calendar — mounted only at ≥sm (see useMediaQuery) */}
+      {isDesktop === true ? (
+      <div>
         <div className="mb-2 flex flex-wrap gap-2">
           <Button
             size="sm"
@@ -265,7 +308,11 @@ export function CalendarDashboard() {
               setSelectedDay(ev.start);
             }}
             onDrillDown={(d) => setSelectedDay(d)}
-            components={{ event: EventComponent }}
+            components={{
+              event: EventComponent,
+              dateCellWrapper: DateCellWrapper,
+              header: DayHeader,
+            }}
             eventPropGetter={eventPropGetter}
             style={{ height: "100%" }}
             messages={{
@@ -274,9 +321,11 @@ export function CalendarDashboard() {
           />
         </div>
       </div>
+      ) : null}
 
-      {/* Mobile vertical day list */}
-      <div className="sm:hidden" data-testid="calendar-mobile">
+      {/* Mobile vertical day list — mounted only below sm */}
+      {isDesktop === false ? (
+      <div data-testid="calendar-mobile">
         <MobileDayList
           anchor={date}
           events={events}
@@ -285,6 +334,7 @@ export function CalendarDashboard() {
           onShiftWeek={(delta) => setDate((d) => addDays(d, delta * 7))}
         />
       </div>
+      ) : null}
 
       {plansQuery.isLoading && (
         <p className="text-sm text-zinc-500">Loading plans…</p>

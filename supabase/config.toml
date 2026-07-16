@@ -24,3 +24,8 @@ site_url = "http://localhost:3000"
 
 [realtime]
 enabled = true
+
+# Disabled: not needed for our gates, and on Windows the CLI's analytics
+# (Logflare) requires the Docker daemon exposed on tcp://localhost:2375.
+[analytics]
+enabled = false
