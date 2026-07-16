@@ -38,6 +38,11 @@ jobs:
   database-gates:
     name: RLS matrix + SQL tests + contract test
     runs-on: ubuntu-latest
+    env:
+      # Vitest/Playwright colorize on GitHub Actions; ANSI sequences contain
+      # digits, which silently break this job's grep-based pass-count gates
+      # (e.g. "Tests[^0-9]*10 passed" can never match "Tests <ESC>[1m10").
+      NO_COLOR: "1"
     steps:
       - uses: actions/checkout@v4
 
