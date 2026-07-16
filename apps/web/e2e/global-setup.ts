@@ -14,6 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { FullConfig } from "@playwright/test";
 import { PERSONAS, type PersonaKey } from "./personas";
 import { isE2EEnabled, requireE2EEnv } from "./helpers/env";
+import { cleanupE2EPlans } from "./helpers/cleanup";
 import { ensureContentFixtures } from "./helpers/fixtures";
 import { signInAs } from "./helpers/supabase";
 
@@ -277,4 +278,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   const memberA = await signInAs("member_a");
   await ensureContentFixtures(memberA);
   console.log("[e2e global-setup] content fixtures ready (member_a JWT)");
+
+  // Pre-clean plans left by prior crashed runs (teardown handles normal runs).
+  await cleanupE2EPlans(memberA, "global-setup");
 }
