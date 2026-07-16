@@ -60,9 +60,11 @@ jobs:
           version: 2.20.5
 
       - name: Start local Supabase (applies migrations + seed)
+        # --local is required: bare `migration list` demands a linked remote
+        # project on CLI 2.20.5 and exits 1 (this killed the whole gate).
         run: |
           supabase start
-          supabase migration list
+          supabase migration list --local
 
       - name: Run pgTAP suites (RLS matrix + function tests)
         # Explicit paths: supabase/tests/local/ holds the portable-gate stub +
