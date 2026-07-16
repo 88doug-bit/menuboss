@@ -190,21 +190,20 @@ export function CalendarDashboard() {
   );
 
   /**
-   * Week/month day-column header rendered as a real button so the E2E
-   * `calendar-day-cell` click has a visible, stably-sized target (rbc's
-   * background cells can be zero-height). Clicking opens the day detail,
-   * same as selecting a slot.
+   * Week/month day-column header content (E2E `calendar-day-cell` target —
+   * rbc's background cells can be zero-height). Must NOT be a button: rbc
+   * already wraps week headers in its own `.rbc-button-link` button, whose
+   * click fires onDrillDown → setSelectedDay. A span keeps the HTML valid
+   * (no button-in-button hydration error) and lets clicks bubble to rbc.
    */
   const DayHeader = useCallback(
-    ({ date: headerDate, label }: { date: Date; label: string }) => (
-      <button
-        type="button"
+    ({ label }: { date: Date; label: string }) => (
+      <span
         data-testid="calendar-day-cell"
-        className="w-full truncate px-1 text-center hover:underline"
-        onClick={() => setSelectedDay(headerDate)}
+        className="block w-full truncate px-1 text-center"
       >
         {label}
-      </button>
+      </span>
     ),
     [],
   );
