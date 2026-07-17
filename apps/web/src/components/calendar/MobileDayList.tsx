@@ -2,7 +2,7 @@
 
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, weekDays } from "@/lib/utils";
 import type {
   CalendarAssignmentEvent,
   CalendarPlanLite,
@@ -23,7 +23,7 @@ export function MobileDayList({
   onShiftWeek: (delta: number) => void;
 }) {
   const weekStart = startOfWeek(anchor, { weekStartsOn: 0 });
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const days = weekDays(anchor);
 
   return (
     <div className="flex flex-col gap-3">

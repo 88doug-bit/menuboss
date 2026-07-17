@@ -25,6 +25,7 @@ import { MEAL_SLOTS } from "@/lib/mealSlots";
 import {
   autoPlanTitle,
   buildDayMealPayload,
+  type PlanDetailForPayload,
 } from "@/components/day-planner/dayPlanPayload";
 
 export type CoveringPlanLite = { id: string; title: string; isShared: boolean };
@@ -80,9 +81,7 @@ export function MealDialog({
   const upsert = useMutation(
     trpc.mealPlan.upsert.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          predicate: (q) => JSON.stringify(q.queryKey).includes("mealPlan"),
-        });
+        await queryClient.invalidateQueries(trpc.mealPlan.pathFilter());
         onClose(); // focus returns to the day planner (spec line 9)
       },
       onError: (err) => {
@@ -141,12 +140,29 @@ export function MealDialog({
     detailQuery.isLoading,
   ]);
 
-  function save() {
+  async function save() {
     if (!recipe && !savesEmptyPlan) return;
     setError(null);
+    // Re-fetch the plan at save time: the upsert RPC replaces the whole
+    // assignment set, so building the payload from a dialog-open-time
+    // snapshot would overwrite meals another household member added while
+    // the dialog was open. A fresh read narrows that window to the
+    // request itself.
+    let detail: PlanDetailForPayload | null = null;
+    if (planId !== NEW_PLAN) {
+      try {
+        detail = await queryClient.fetchQuery({
+          ...trpc.mealPlan.byId.queryOptions({ id: planId }),
+          staleTime: 0,
+        });
+      } catch {
+        setError("Could not load the plan — try again.");
+        return;
+      }
+    }
     upsert.mutate(
       buildDayMealPayload({
-        detail: planId === NEW_PLAN ? null : (detailQuery.data ?? null),
+        detail,
         dayIso,
         mealSlot: slot,
         recipeId: recipe?.id ?? null,
@@ -202,7 +218,11 @@ export function MealDialog({
                 No plan covers this day — a new single-day plan “
                 {autoPlanTitle(dayIso)}” will be created.
               </p>
-            ) : coveringPlans.length === 1 ? (
+            ) : coveringPlans.length === 1 && planId === coveringPlans[0].id ? (
+              // The text must reflect the actual save target — if a live
+              // refetch changed the covering set after open (planId no
+              // longer the single plan), fall through to the explicit
+              // picker instead of announcing a plan we won't save to.
               <p
                 className="text-sm text-zinc-600"
                 data-testid="meal-dialog-plan-target"

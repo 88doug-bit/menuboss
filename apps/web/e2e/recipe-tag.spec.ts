@@ -25,7 +25,7 @@ e2eDescribe("Recipe editor — inline tag creation", () => {
     const { error } = await admin
       .from("tag")
       .update({ is_active: false })
-      .like("name", "E2E Tag %");
+      .eq("name", tagName);
     if (error) {
       console.warn(`[e2e recipe-tag] cleanup failed: ${error.message}`);
     }

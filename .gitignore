@@ -68,3 +68,8 @@ test-results/
 # Logs
 *.log
 logs/
+# Working notes and Office temp files (kept local, not tracked)
+~$*
+bugfix*.txt
+bugfix*.jpg
+UI_Refine_Step1.txt.docx

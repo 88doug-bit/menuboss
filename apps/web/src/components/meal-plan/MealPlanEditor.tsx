@@ -183,10 +183,7 @@ export function MealPlanEditor({
     trpc.mealPlan.upsert.mutationOptions({
       onSuccess: async (data) => {
         setFormError(null);
-        await queryClient.invalidateQueries({
-          predicate: (q) =>
-            JSON.stringify(q.queryKey).includes("mealPlan"),
-        });
+        await queryClient.invalidateQueries(trpc.mealPlan.pathFilter());
         router.push(`/plans/${data.id}/edit`);
         router.refresh();
       },
@@ -395,6 +392,7 @@ export function MealPlanEditor({
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <Label htmlFor={`assignments.${index}.recipeId`}>Recipe</Label>
                 <RecipePicker
+                  showIdleResults={false}
                   onPick={(r) =>
                     form.setValue(`assignments.${index}.recipeId`, r.id, {
                       shouldDirty: true,

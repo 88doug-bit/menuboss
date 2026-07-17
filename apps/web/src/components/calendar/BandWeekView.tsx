@@ -7,7 +7,8 @@
  * `views={{ week: BandWeekView, month: true }}`, which keeps rbc's own
  * toolbar (right-side Week/Month toggle, navigation) untouched.
  */
-import { addDays, format, isSameDay, startOfWeek } from "date-fns";
+import { useMemo } from "react";
+import { addDays, format, isSameDay } from "date-fns";
 import type { NavigateAction } from "react-big-calendar";
 import {
   BANDS,
@@ -18,12 +19,7 @@ import {
 } from "@/lib/mealSlots";
 import type { CalendarAssignmentEvent } from "@/components/calendar/useCalendarEvents";
 import { MealChip } from "@/components/calendar/MealChip";
-import { cn, toIsoDate } from "@/lib/utils";
-
-function weekDays(date: Date): Date[] {
-  const start = startOfWeek(date, { weekStartsOn: 0 });
-  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-}
+import { cn, toIsoDate, weekDays } from "@/lib/utils";
 
 export type BandGroups = Map<string, Record<Band, CalendarAssignmentEvent[]>>;
 
@@ -62,8 +58,11 @@ export function BandWeekView({
   onDrillDown,
   onSelectEvent,
 }: BandWeekViewProps) {
-  const days = weekDays(date);
-  const groups = groupEventsByDayAndBand(events, days);
+  const days = useMemo(() => weekDays(date), [date]);
+  const groups = useMemo(
+    () => groupEventsByDayAndBand(events, days),
+    [events, days],
+  );
   const today = new Date();
 
   return (

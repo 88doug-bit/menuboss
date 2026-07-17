@@ -4,14 +4,14 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { CategoryDto } from "@/server/routers/categoryMapper";
 import type { TagDto } from "@/server/routers/tagMapper";
 import { slugify } from "@/lib/utils";
+import { toggleId } from "@/components/shared/TagChipList";
 
-function toggleId(ids: string[], id: string): string[] {
-  return ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
-}
+/** Fallback group for user-created tags when no existing group fits. */
+export const CUSTOM_TAG_GROUP = "custom";
 
 function CategoryTreeNodes({
   nodes,
@@ -98,36 +98,56 @@ export function TagPicker({
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   /**
-   * When set, renders an inline "new tag" input. Caller performs the
-   * create (tag.create is admin-only — gate this prop on role) and
-   * returns the created tag, which is auto-selected.
+   * When set, renders an inline "new tag" input with a group select.
+   * Caller performs the create (tag.create is admin-only — gate this
+   * prop on role) and returns the created tag, which is auto-selected.
    */
-  onCreate?: (name: string) => Promise<TagDto>;
+  onCreate?: (name: string, tagGroup: string) => Promise<TagDto>;
 }) {
   const [newName, setNewName] = useState("");
+  const [newGroup, setNewGroup] = useState(CUSTOM_TAG_GROUP);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  // New tags join an existing group by default choice, not a forced
+  // "custom" bucket that fragments the taxonomy.
+  const groupOptions = useMemo(() => {
+    const groups = new Set(tags.map((t) => t.tagGroup));
+    groups.add(CUSTOM_TAG_GROUP);
+    return [...groups].sort();
+  }, [tags]);
+
   const trimmed = newName.trim();
+  const newSlug = slugify(trimmed);
+  // The DB unique key is (tag_group, slug) — guard on slug within the
+  // chosen group (catches "Café" vs "Cafe"), and on name anywhere so we
+  // can point at the existing chip instead of creating a twin in another
+  // group. Deactivated tags aren't in `tags`; those collisions surface
+  // via the friendly CONFLICT message below.
   const duplicate = tags.find(
-    (t) => t.name.toLowerCase() === trimmed.toLowerCase(),
+    (t) =>
+      t.name.toLowerCase() === trimmed.toLowerCase() ||
+      (t.tagGroup === newGroup && t.slug === newSlug),
   );
   const canAdd =
-    Boolean(onCreate) && !creating && slugify(trimmed) !== "" && !duplicate;
+    Boolean(onCreate) && !creating && newSlug !== "" && !duplicate;
 
   async function addTag() {
     if (!onCreate || !canAdd) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const tag = await onCreate(trimmed);
+      const tag = await onCreate(trimmed, newGroup);
       onChange([...selectedIds, tag.id]);
       setNewName("");
     } catch (err) {
+      const code = (err as { data?: { code?: string } })?.data?.code;
       setCreateError(
-        err instanceof Error && err.message
-          ? err.message
-          : "Could not create the tag.",
+        code === "CONFLICT"
+          ? "A tag with this name already exists (it may be deactivated — an admin can reactivate it)."
+          : err instanceof Error && err.message
+            ? err.message
+            : "Could not create the tag.",
       );
     } finally {
       setCreating(false);
@@ -183,6 +203,19 @@ export function TagPicker({
               }}
               className="h-8 w-40 rounded-md border border-zinc-300 px-2 text-sm"
             />
+            <select
+              data-testid="tag-picker-new-group"
+              aria-label="Tag group"
+              value={newGroup}
+              onChange={(e) => setNewGroup(e.target.value)}
+              className="h-8 rounded-md border border-zinc-300 px-1.5 text-xs"
+            >
+              {groupOptions.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               data-testid="tag-picker-add"

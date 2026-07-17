@@ -161,6 +161,25 @@ describe("RecipePicker", () => {
     expect(search).toHaveValue("");
   });
 
+  it("showIdleResults=false renders and fetches nothing until a search/filter", async () => {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <RecipePicker onPick={vi.fn()} showIdleResults={false} />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("recipe-picker-result")).toBeNull();
+    expect(screen.queryByTestId("recipe-picker-empty")).toBeNull();
+    expect(calls.recipeList).toEqual([]);
+
+    await userEvent.type(screen.getByTestId("recipe-picker-search"), "salmon");
+    await waitFor(() =>
+      expect(screen.getAllByTestId("recipe-picker-result")).toHaveLength(1),
+    );
+  });
+
   it("shows the empty state when nothing matches", async () => {
     renderPicker();
     await userEvent.type(screen.getByTestId("recipe-picker-search"), "zzz");

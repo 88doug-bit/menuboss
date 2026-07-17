@@ -637,11 +637,11 @@ export function RecipeEditor({ recipeId }: RecipeEditorProps) {
           onChange={setTagIds}
           onCreate={
             isAdmin
-              ? async (name) => {
+              ? async (name, tagGroup) => {
                   const tag = await createTag.mutateAsync({
                     name,
                     slug: slugify(name),
-                    tagGroup: "custom",
+                    tagGroup,
                   });
                   await queryClient.invalidateQueries(
                     trpc.tag.list.queryFilter(),

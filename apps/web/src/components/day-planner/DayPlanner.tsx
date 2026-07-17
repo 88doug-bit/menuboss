@@ -59,29 +59,33 @@ export function DayPlanner({ dayIso }: { dayIso: string }) {
   const softDelete = useMutation(
     trpc.mealPlan.softDelete.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          predicate: (q) => JSON.stringify(q.queryKey).includes("mealPlan"),
-        });
+        await queryClient.invalidateQueries(trpc.mealPlan.pathFilter());
       },
     }),
   );
 
-  // Covering plans span the day; their assignments may span other days.
-  const events = useCalendarEvents(plansQuery.data).filter((e) =>
-    isSameDay(e.start, day),
-  );
+  // Creating a meal needs an accurate covering-plans set: while loading it
+  // is unknown, and on error it would silently fall back to [] and
+  // auto-create a plan that overlaps an existing (invisible) one.
+  const canAddMeal = !plansQuery.isLoading && !plansQuery.isError;
+  const openCreate = (band: Band) =>
+    setDialog({ mode: "create", defaultSlot: BAND_DEFAULT_SLOT[band] });
 
+  // Covering plans span the day; their assignments may span other days —
+  // the day filter lives inside the memo so it only reruns on data change.
+  const allEvents = useCalendarEvents(plansQuery.data);
   const byBand = useMemo(() => {
-    const groups: Record<Band, typeof events> = {
+    const groups: Record<Band, typeof allEvents> = {
       morning: [],
       midday: [],
       evening: [],
     };
-    for (const event of events) {
+    for (const event of allEvents) {
+      if (!isSameDay(event.start, day)) continue;
       groups[slotToBand(event.resource.mealSlot)].push(event);
     }
     return groups;
-  }, [events]);
+  }, [allEvents, day]);
 
   const coveringPlans: CoveringPlanLite[] = plans.map((p) => ({
     id: p.id,
@@ -156,15 +160,8 @@ export function DayPlanner({ dayIso }: { dayIso: string }) {
               size="sm"
               variant="outline"
               data-testid={`day-band-add-${band}`}
-              // Wait for covering plans — the dialog's plan-attachment
-              // branch is chosen when it opens.
-              disabled={plansQuery.isLoading}
-              onClick={() =>
-                setDialog({
-                  mode: "create",
-                  defaultSlot: BAND_DEFAULT_SLOT[band],
-                })
-              }
+              disabled={!canAddMeal}
+              onClick={() => openCreate(band)}
             >
               Add meal
             </Button>
@@ -181,13 +178,8 @@ export function DayPlanner({ dayIso }: { dayIso: string }) {
               type="button"
               data-testid={`day-slot-placeholder-${BAND_DEFAULT_SLOT[band]}`}
               className="mb-1.5 w-full rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-left text-sm capitalize text-zinc-400 hover:border-emerald-400 hover:text-emerald-700"
-              disabled={plansQuery.isLoading}
-              onClick={() =>
-                setDialog({
-                  mode: "create",
-                  defaultSlot: BAND_DEFAULT_SLOT[band],
-                })
-              }
+              disabled={!canAddMeal}
+              onClick={() => openCreate(band)}
             >
               + {BAND_DEFAULT_SLOT[band]}
             </button>

@@ -65,6 +65,7 @@ vi.mock("@/lib/trpc/client", () => ({
       },
     },
     mealPlan: {
+      pathFilter: () => ({ queryKey: [["mealPlan"]] }),
       byId: {
         queryOptions: (input: { id: string }) => ({
           queryKey: ["mealPlan.byId", input],
