@@ -9,6 +9,9 @@
     "node": ">=20"
   },
   "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
+    "dev:web": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1 -SkipSupabase",
+    "dev:reset": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1 -ResetDb",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

@@ -149,13 +149,18 @@ describe("MealDialog — no covering plan (auto-create branch)", () => {
       "Thu Jul 16, 2026",
     );
 
-    // Dimmed save always explains itself.
-    expect(screen.getByTestId("meal-dialog-save")).toBeDisabled();
-    expect(screen.getByTestId("meal-dialog-save-hint")).toHaveTextContent(
-      /pick a recipe/i,
+    // With no covering plan and no recipe, the save is the empty-plan path.
+    await waitFor(() =>
+      expect(screen.getByTestId("meal-dialog-save")).toHaveTextContent(
+        /save empty plan/i,
+      ),
     );
 
     await pickRecipe();
+    // Once a recipe is picked, it's a normal meal save again.
+    expect(screen.getByTestId("meal-dialog-save")).toHaveTextContent(
+      /save to menu plan/i,
+    );
     const save = screen.getByTestId("meal-dialog-save");
     await waitFor(() => expect(save).toBeEnabled());
     await userEvent.click(save);
@@ -177,6 +182,24 @@ describe("MealDialog — no covering plan (auto-create branch)", () => {
     });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
+
+  it("saves an empty single-day plan when no recipe is picked", async () => {
+    const onClose = renderDialog({}, []);
+    const save = screen.getByTestId("meal-dialog-save");
+    await waitFor(() => expect(save).toBeEnabled());
+    expect(save).toHaveTextContent(/save empty plan/i);
+
+    await userEvent.click(save);
+    await waitFor(() => expect(state.upsertPayloads).toHaveLength(1));
+    expect(state.upsertPayloads[0]).toMatchObject({
+      title: "Thu Jul 16, 2026",
+      startDate: "2026-07-16",
+      endDate: "2026-07-16",
+      householdIds: ["hh-a"],
+      assignments: [],
+    });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
 });
 
 describe("MealDialog — exactly one covering plan", () => {
@@ -188,6 +211,13 @@ describe("MealDialog — exactly one covering plan", () => {
       "Week plan",
     );
     expect(screen.queryByTestId("meal-dialog-plan-select")).toBeNull();
+
+    // A covering plan exists, so saving requires a recipe — dimmed with a
+    // visible reason (empty-plan saves only apply to new plans).
+    expect(screen.getByTestId("meal-dialog-save")).toBeDisabled();
+    expect(screen.getByTestId("meal-dialog-save-hint")).toHaveTextContent(
+      /pick a recipe/i,
+    );
 
     await pickRecipe();
     // Slot pre-selected from the band zone; switch to lunch to prove it saves.

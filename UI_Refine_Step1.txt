@@ -1,0 +1,16 @@
+UI refinement Increment 1
+Revision to landing page:
+1. Remove redundant week/month toggle in upper left, keep on right in current location.
+2. Remove 24-hour clock vertical, replace with categories “Morning” “mid-day” “evening”
+3. Revise action: mouseclick on date/day (eg 16 Thu) opens new page “Day Planner”
+Page “Day Planner”
+	Should show 24 hour clock on left (like original landing page) 
+	User selects time (click), pop up dialog with options to select meal: (initial list: “Breakfast” “lunch” “dinner”, hold space for expansion, OK creates meal in day planner schedule.
+	Focus returns to day planner
+User can click on the calendar to enter a new menu, or click on a menu
+Click on a Menu opens the Menu Planer
+Menu planner shows the Recipe Picker
+	Search box
+	Filter buttons (using tags from existing “recipe card
+	Button to save to menu plan
+	Button to return to menu planner

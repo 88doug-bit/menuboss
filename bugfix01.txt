@@ -1,0 +1,78 @@
+## Error Type
+Console Error
+
+## Error Message
+In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <div>
+      <div>
+      <div className="h-[min(70v..." data-testid="calendar-d...">
+        <Uncontrolled(Calendar) localizer={{...}} events={[...]} date={Date} view="week" ...>
+          <Calendar localizer={{...}} events={[...]} date={Date} view="week" onNavigate={function handleChange} ...>
+            <div className="rbc-calendar" style={{height:"100%"}}>
+              <Toolbar>
+              <Week localizer={{...}} onNavigate={function} onView={function handleChange} views={[...]} popup={true} ...>
+                <TimeGrid onNavigate={function} onView={function handleChange} views={[...]} popup={true} ...>
+                  <div className="rbc-time-view" ref={{current:null}}>
+                    <TimeGridHeader range={[...]} events={[...]} width={undefined} rtl={undefined} ...>
+                      <div style={{}} ref={{current:null}} className="rbc-time-h...">
+                        <div>
+                        <div className="rbc-time-h...">
+                          <div className="rbc-row rb...">
+                            <div style={undefined} className="rbc-header">
+>                             <button type="button" className="rbc-button-link" onClick={function onClick}>
+                                <CalendarDashboard.useCallback[DayHeader] date={Date} label="12 Sun" localizer={{...}}>
+>                                 <button
+>                                   type="button"
+>                                   data-testid="calendar-day-cell"
+>                                   className="w-full truncate px-1 text-center hover:underline"
+>                                   onClick={function CalendarDashboard.useCallback[DayHeader]}
+>                                 >
+                            ...
+                          ...
+                    ...
+
+
+
+    at button (<anonymous>:null:null)
+    at CalendarDashboard.useCallback[DayHeader] (src/components/calendar/CalendarDashboard.tsx:200:7)
+    at CalendarDashboard (src/components/calendar/CalendarDashboard.tsx:294:11)
+    at CalendarPage (src\app\(app)\calendar\page.tsx:4:10)
+
+## Code Frame
+  198 |   const DayHeader = useCallback(
+  199 |     ({ date: headerDate, label }: { date: Date; label: string }) => (
+> 200 |       <button
+      |       ^
+  201 |         type="button"
+  202 |         data-testid="calendar-day-cell"
+  203 |         className="w-full truncate px-1 text-center hover:underline"
+
+Next.js version: 16.2.10 (Turbopack)
+
+## Error Type
+Console Error
+
+## Error Message
+<button> cannot contain a nested <button>.
+See this log for the ancestor stack trace.
+
+
+    at button (<anonymous>:null:null)
+    at CalendarDashboard (src/components/calendar/CalendarDashboard.tsx:294:11)
+    at CalendarPage (src\app\(app)\calendar\page.tsx:4:10)
+
+## Code Frame
+  292 |           data-testid="calendar-desktop"
+  293 |         >
+> 294 |           <Calendar
+      |           ^
+  295 |             localizer={localizer}
+  296 |             events={events}
+  297 |             date={date}
+
+Next.js version: 16.2.10 (Turbopack)
+
+

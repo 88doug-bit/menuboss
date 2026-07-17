@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTRPC } from "@/lib/trpc/client";
+import { slugify } from "@/lib/utils";
 import { SEED_UNITS } from "@/lib/units";
 import { parseInstructions } from "@/components/recipes/InstructionSteps";
 
@@ -109,6 +110,11 @@ export function RecipeEditor({ recipeId }: RecipeEditorProps) {
     trpc.category.list.queryOptions({ activeOnly: true }),
   );
   const tagsQuery = useQuery(trpc.tag.list.queryOptions({ activeOnly: true }));
+  // tag.create is admin-only (procedure + RLS) — only offer the inline
+  // "new tag" input to admins.
+  const meQuery = useQuery(trpc.family.me.queryOptions());
+  const isAdmin = meQuery.data?.profile.role === "admin";
+  const createTag = useMutation(trpc.tag.create.mutationOptions());
 
   const searchQueryEnabled = searchQuery.trim().length > 0;
   const ingredientSearch = useQuery({
@@ -625,7 +631,26 @@ export function RecipeEditor({ recipeId }: RecipeEditorProps) {
           selectedIds={categoryIds}
           onChange={setCategoryIds}
         />
-        <TagPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} />
+        <TagPicker
+          tags={tags}
+          selectedIds={tagIds}
+          onChange={setTagIds}
+          onCreate={
+            isAdmin
+              ? async (name) => {
+                  const tag = await createTag.mutateAsync({
+                    name,
+                    slug: slugify(name),
+                    tagGroup: "custom",
+                  });
+                  await queryClient.invalidateQueries(
+                    trpc.tag.list.queryFilter(),
+                  );
+                  return tag;
+                }
+              : undefined
+          }
+        />
       </div>
 
       <LeftoverDecayPath

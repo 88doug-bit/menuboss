@@ -76,7 +76,15 @@ e2eDescribe("Day Planner (UI Increment 1)", () => {
     await page.goto(`/day/${futureIso}`);
     await expect(page.getByTestId("day-planner")).toBeVisible();
 
-    await page.getByTestId("day-band-add-evening").click();
+    // Each day is pre-populated with default slot placeholders.
+    for (const slot of ["breakfast", "lunch", "dinner"] as const) {
+      await expect(
+        page.getByTestId(`day-slot-placeholder-${slot}`),
+      ).toBeVisible();
+    }
+
+    // Clicking the dinner placeholder opens the dialog pre-set to dinner.
+    await page.getByTestId("day-slot-placeholder-dinner").click();
     await expect(page.getByTestId("meal-dialog")).toBeVisible();
     // Evening zone pre-selects dinner (band default slot).
     await expect(page.getByTestId("meal-dialog-slot")).toHaveValue("dinner");
@@ -103,6 +111,10 @@ e2eDescribe("Day Planner (UI Increment 1)", () => {
     const evening = page.getByTestId("day-band-evening");
     await expect(evening.getByTestId("day-meal-item")).toContainText(
       E2E_FIXTURES.seafoodRecipeTitle,
+    );
+    // The dinner slot is filled — its placeholder is gone.
+    await expect(page.getByTestId("day-slot-placeholder-dinner")).toHaveCount(
+      0,
     );
 
     // Survives a reload (really persisted, not local state).
@@ -151,5 +163,27 @@ e2eDescribe("Day Planner (UI Increment 1)", () => {
     // Plan and its meals disappear from the page.
     await expect(page.getByTestId(/^plan-delete-/)).toHaveCount(0);
     await expect(page.getByTestId("day-meal-item")).toHaveCount(0);
+  });
+
+  test("saves an empty plan for later editing (no recipe picked)", async ({
+    page,
+  }) => {
+    await page.goto(`/day/${futureIso}`);
+    await page.getByTestId("day-band-add-morning").click();
+    await expect(page.getByTestId("meal-dialog")).toBeVisible();
+
+    const save = page.getByTestId("meal-dialog-save");
+    await expect(save).toHaveText(/save empty plan/i);
+    await save.click();
+    await expect(page.getByTestId("meal-dialog")).toHaveCount(0);
+
+    // The empty plan now covers the day (marker chip + covering plan row).
+    const deleteButton = page.getByTestId(/^plan-delete-/);
+    await expect(deleteButton).toBeVisible();
+
+    // Clean up through the UI.
+    page.once("dialog", (dialog) => dialog.accept());
+    await deleteButton.click();
+    await expect(page.getByTestId(/^plan-delete-/)).toHaveCount(0);
   });
 });

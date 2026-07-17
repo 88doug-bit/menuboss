@@ -95,29 +95,44 @@ export function MealDialog({
     }),
   );
 
+  // Saving without a recipe is allowed only when it creates a new plan —
+  // an "empty plan for later editing". Appending nothing to an existing
+  // plan (or clearing a meal's recipe) would be a silent no-op.
+  const savesEmptyPlan = !existing && !recipe && planId === NEW_PLAN;
+
   const canSave = useMemo(() => {
-    if (!recipe || upsert.isPending) return false;
+    if (upsert.isPending) return false;
+    if (savesEmptyPlan) return Boolean(householdId);
+    if (!recipe) return false;
     if (planId === "") return false;
     if (planId === NEW_PLAN) return Boolean(householdId);
     return Boolean(detailQuery.data);
-  }, [recipe, upsert.isPending, planId, householdId, detailQuery.data]);
+  }, [
+    upsert.isPending,
+    savesEmptyPlan,
+    recipe,
+    planId,
+    householdId,
+    detailQuery.data,
+  ]);
 
   // A silently dimmed save button is a dead end — always say why.
   const saveHint = useMemo(() => {
     if (canSave || upsert.isPending) return null;
-    if (!recipe) return "Pick a recipe to save.";
-    if (planId === "") return "Choose a plan first.";
-    if (planId === NEW_PLAN && !householdId) {
+    if ((planId === NEW_PLAN || savesEmptyPlan) && !householdId) {
       return meQuery.isLoading
         ? "Loading your household…"
         : "Waiting for family invite — saving is unavailable.";
     }
+    if (!recipe) return "Pick a recipe to save.";
+    if (planId === "") return "Choose a plan first.";
     if (detailQuery.isError) return "Could not load the plan — try again.";
     if (detailQuery.isLoading) return "Loading plan…";
     return null;
   }, [
     canSave,
     upsert.isPending,
+    savesEmptyPlan,
     recipe,
     planId,
     householdId,
@@ -127,14 +142,14 @@ export function MealDialog({
   ]);
 
   function save() {
-    if (!recipe) return;
+    if (!recipe && !savesEmptyPlan) return;
     setError(null);
     upsert.mutate(
       buildDayMealPayload({
         detail: planId === NEW_PLAN ? null : (detailQuery.data ?? null),
         dayIso,
         mealSlot: slot,
-        recipeId: recipe.id,
+        recipeId: recipe?.id ?? null,
         householdId,
         assignmentId: existing?.assignmentId,
       }),
@@ -244,7 +259,11 @@ export function MealDialog({
               disabled={!canSave}
               data-testid="meal-dialog-save"
             >
-              {upsert.isPending ? "Saving…" : "Save to menu plan"}
+              {upsert.isPending
+                ? "Saving…"
+                : savesEmptyPlan
+                  ? "Save empty plan"
+                  : "Save to menu plan"}
             </Button>
             <Button variant="outline" onClick={onClose}>
               Return to day planner

@@ -60,6 +60,20 @@ describe("buildDayMealPayload — no covering plan (auto-create branch)", () => 
     });
     expect(payload.id).toBeUndefined();
   });
+
+  it("creates an empty plan (no assignments) when recipeId is null", () => {
+    const payload = buildDayMealPayload({
+      detail: null,
+      dayIso: "2026-07-16",
+      mealSlot: "dinner",
+      recipeId: null,
+      householdId: "hh-a",
+    });
+    expect(payload.assignments).toEqual([]);
+    expect(payload.title).toBe("Thu Jul 16, 2026");
+    expect(payload.startDate).toBe("2026-07-16");
+    expect(payload.endDate).toBe("2026-07-16");
+  });
 });
 
 describe("buildDayMealPayload — existing plan (append branch)", () => {
@@ -93,6 +107,18 @@ describe("buildDayMealPayload — existing plan (append branch)", () => {
       mealSlot: "lunch",
       servings: 1,
     });
+  });
+
+  it("changes nothing on an existing plan when recipeId is null (no phantom append)", () => {
+    const payload = buildDayMealPayload({
+      detail,
+      dayIso: "2026-07-16",
+      mealSlot: "lunch",
+      recipeId: null,
+      householdId: "hh-a",
+    });
+    expect(payload.assignments).toHaveLength(1);
+    expect(payload.assignments[0].id).toBe("asg-1");
   });
 
   it("falls back to the creator household when householdIds is empty", () => {

@@ -9,7 +9,13 @@
  */
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import type { NavigateAction } from "react-big-calendar";
-import { BANDS, BAND_LABELS, slotToBand, type Band } from "@/lib/mealSlots";
+import {
+  BANDS,
+  BAND_DEFAULT_SLOT,
+  BAND_LABELS,
+  slotToBand,
+  type Band,
+} from "@/lib/mealSlots";
 import type { CalendarAssignmentEvent } from "@/components/calendar/useCalendarEvents";
 import { MealChip } from "@/components/calendar/MealChip";
 import { cn, toIsoDate } from "@/lib/utils";
@@ -100,15 +106,26 @@ export function BandWeekView({
                 data-testid={`band-cell-${band}`}
                 onClick={() => onDrillDown?.(day)}
               >
-                {cellEvents.map((event) => (
-                  <MealChip
-                    key={event.id}
-                    title={event.title}
-                    planTitle={event.resource.planTitle}
-                    isShared={event.resource.isShared}
-                    onClick={() => onSelectEvent?.(event)}
-                  />
-                ))}
+                {cellEvents.length === 0 ? (
+                  // Pre-populated default slot placeholder (Breakfast /
+                  // Lunch / Dinner); the cell click opens the day planner.
+                  <span
+                    aria-hidden
+                    className="truncate px-0.5 text-[11px] capitalize text-zinc-300"
+                  >
+                    {BAND_DEFAULT_SLOT[band]}
+                  </span>
+                ) : (
+                  cellEvents.map((event) => (
+                    <MealChip
+                      key={event.id}
+                      title={event.title}
+                      planTitle={event.resource.planTitle}
+                      isShared={event.resource.isShared}
+                      onClick={() => onSelectEvent?.(event)}
+                    />
+                  ))
+                )}
               </div>
             );
           })}

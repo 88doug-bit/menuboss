@@ -25,6 +25,7 @@ import {
   BANDS,
   BAND_DEFAULT_SLOT,
   BAND_LABELS,
+  normalizeMealSlot,
   slotToBand,
   type Band,
 } from "@/lib/mealSlots";
@@ -168,9 +169,30 @@ export function DayPlanner({ dayIso }: { dayIso: string }) {
               Add meal
             </Button>
           </div>
-          {byBand[band].length === 0 ? (
-            <p className="text-xs text-zinc-400">No meals planned</p>
-          ) : (
+          {/* Each day starts pre-populated with its default meal slot
+              (Breakfast / Lunch / Dinner) as a clickable placeholder until
+              a meal with that slot exists. */}
+          {!byBand[band].some(
+            (e) =>
+              normalizeMealSlot(e.resource.mealSlot) ===
+              BAND_DEFAULT_SLOT[band],
+          ) && (
+            <button
+              type="button"
+              data-testid={`day-slot-placeholder-${BAND_DEFAULT_SLOT[band]}`}
+              className="mb-1.5 w-full rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-left text-sm capitalize text-zinc-400 hover:border-emerald-400 hover:text-emerald-700"
+              disabled={plansQuery.isLoading}
+              onClick={() =>
+                setDialog({
+                  mode: "create",
+                  defaultSlot: BAND_DEFAULT_SLOT[band],
+                })
+              }
+            >
+              + {BAND_DEFAULT_SLOT[band]}
+            </button>
+          )}
+          {byBand[band].length > 0 && (
             <ul className="space-y-1.5">
               {byBand[band].map((event) => (
                 <li key={event.id} data-testid="day-meal-item">

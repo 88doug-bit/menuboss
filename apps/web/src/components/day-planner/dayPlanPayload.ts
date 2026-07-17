@@ -42,7 +42,8 @@ export function buildDayMealPayload(opts: {
   detail: PlanDetailForPayload | null;
   dayIso: string;
   mealSlot: string;
-  recipeId: string;
+  /** null saves an empty plan (no assignment) for later editing. */
+  recipeId: string | null;
   /** Creator household — required when auto-creating (detail null). */
   householdId: string;
   /** When set, update this assignment's recipe/slot instead of appending. */
@@ -58,22 +59,22 @@ export function buildDayMealPayload(opts: {
       endDate: dayIso,
       householdIds: [householdId],
       portionRequirements: [],
-      assignments: [
-        { recipeId, assignmentDate: dayIso, mealSlot, servings: 1 },
-      ],
+      assignments: recipeId
+        ? [{ recipeId, assignmentDate: dayIso, mealSlot, servings: 1 }]
+        : [],
     };
   }
 
   const assignments: MealPlanUpsertInput["assignments"] =
     detail.assignments.map((a) => ({
       id: a.id,
-      recipeId: a.id === assignmentId ? recipeId : a.recipeId,
+      recipeId: a.id === assignmentId ? (recipeId ?? a.recipeId) : a.recipeId,
       assignmentDate: a.assignmentDate.slice(0, 10),
       mealSlot: a.id === assignmentId ? mealSlot : a.mealSlot,
       servings: a.servings,
       notes: a.notes ?? undefined,
     }));
-  if (!assignmentId) {
+  if (!assignmentId && recipeId) {
     assignments.push({
       recipeId,
       assignmentDate: dayIso,

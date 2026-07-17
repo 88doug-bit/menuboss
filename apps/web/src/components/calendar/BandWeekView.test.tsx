@@ -144,4 +144,11 @@ describe("BandWeekView rendering", () => {
     expect(onDrillDown).toHaveBeenCalledTimes(1);
     expect(onDrillDown.mock.calls[0][0].getDate()).toBe(14);
   });
+
+  it("empty cells show the band's default slot as a placeholder", () => {
+    render(<BandWeekView date={anchor} events={[]} />);
+    expect(screen.getAllByText("breakfast")).toHaveLength(7);
+    expect(screen.getAllByText("lunch")).toHaveLength(7);
+    expect(screen.getAllByText("dinner")).toHaveLength(7);
+  });
 });
