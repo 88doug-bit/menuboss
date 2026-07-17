@@ -3,15 +3,11 @@
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { CalendarAssignmentEvent } from "@/components/calendar/CalendarDashboard";
-
-type PlanSummary = {
-  id: string;
-  title: string;
-  isShared: boolean;
-  startDate: string;
-  endDate: string;
-};
+import type {
+  CalendarAssignmentEvent,
+  CalendarPlanLite,
+} from "@/components/calendar/useCalendarEvents";
+import { MealChip } from "@/components/calendar/MealChip";
 
 export function MobileDayList({
   anchor,
@@ -22,7 +18,7 @@ export function MobileDayList({
 }: {
   anchor: Date;
   events: CalendarAssignmentEvent[];
-  plans: PlanSummary[];
+  plans: CalendarPlanLite[];
   onSelectDay: (d: Date) => void;
   onShiftWeek: (delta: number) => void;
 }) {
@@ -88,22 +84,12 @@ export function MobileDayList({
                 ) : (
                   <ul className="space-y-1">
                     {dayEvents.map((ev) => (
-                      <li
-                        key={ev.id}
-                        className={cn(
-                          "truncate rounded px-1.5 py-0.5 text-xs text-white",
-                          ev.resource.isShared
-                            ? "bg-emerald-700"
-                            : "bg-zinc-400",
-                        )}
-                        data-testid="calendar-plan-event"
-                      >
-                        {ev.title}
-                        {/* E2E contract: event text must include plan title
-                            (visually unchanged). */}
-                        <span className="sr-only">
-                          {ev.resource.planTitle}
-                        </span>
+                      <li key={ev.id}>
+                        <MealChip
+                          title={ev.title}
+                          planTitle={ev.resource.planTitle}
+                          isShared={ev.resource.isShared}
+                        />
                       </li>
                     ))}
                   </ul>

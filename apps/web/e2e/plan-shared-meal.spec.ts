@@ -1,7 +1,8 @@
 /**
  * §9.3 Flow 1 — Plan a Shared Meal
  *
- * member_a: calendar → day → add plan → search/select seafood recipe
+ * member_a: calendar → day planner page (/day/[date]) → new plan → search/
+ * select seafood recipe
  * (safety note visible) → portion counts (live total = portion-calc) →
  * share Household B → save.
  * member_b (second context): plan visible within §12 P5 budget (≤ 2 s).

@@ -33,58 +33,8 @@ import {
   hasMercuryProfile,
 } from "@/components/recipes/SafetyNoteCallout";
 import { toIsoDate } from "@/lib/utils";
-
-const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"] as const;
-
-/**
- * Search-typeahead recipe picker for an assignment row (E2E contract:
- * `recipe-picker-search` / `recipe-picker-result`). Coexists with the
- * select below it; picking a result sets the same form field.
- */
-function RecipeTypeahead({
-  onPick,
-}: {
-  onPick: (recipe: { id: string; title: string }) => void;
-}) {
-  const trpc = useTRPC();
-  const [q, setQ] = useState("");
-  const searchQuery = useQuery({
-    ...trpc.recipe.list.queryOptions({ q: q.trim() || undefined, limit: 8 }),
-    enabled: q.trim().length > 0,
-  });
-
-  return (
-    <div className="relative">
-      <Input
-        data-testid="recipe-picker-search"
-        placeholder="Search recipes…"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
-      {q.trim() && (searchQuery.data?.items?.length ?? 0) > 0 ? (
-        <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
-          {(searchQuery.data?.items ?? []).map(
-            (r: { id: string; title: string }) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  data-testid="recipe-picker-result"
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50"
-                  onClick={() => {
-                    onPick(r);
-                    setQ("");
-                  }}
-                >
-                  {r.title}
-                </button>
-              </li>
-            ),
-          )}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
+import { MEAL_SLOTS } from "@/lib/mealSlots";
+import { RecipePicker } from "@/components/recipes/RecipePicker";
 
 /**
  * Inline mercury/food-safety callout for the selected recipe (E2E contract:
@@ -444,7 +394,7 @@ export function MealPlanEditor({
             >
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <Label htmlFor={`assignments.${index}.recipeId`}>Recipe</Label>
-                <RecipeTypeahead
+                <RecipePicker
                   onPick={(r) =>
                     form.setValue(`assignments.${index}.recipeId`, r.id, {
                       shouldDirty: true,

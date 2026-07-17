@@ -5,6 +5,7 @@
 
 import type { CategoryDto } from "@/server/routers/categoryMapper";
 import type { TagDto } from "@/server/routers/tagMapper";
+import { TagChipList, toggleId } from "@/components/shared/TagChipList";
 
 export type ContentFilterState = {
   q: string;
@@ -24,10 +25,6 @@ export const emptyFilters: ContentFilterState = {
   minRating: "",
   hasSafetyFlags: false,
 };
-
-function toggleId(ids: string[], id: string): string[] {
-  return ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
-}
 
 function CategoryTreeNodes({
   nodes,
@@ -183,33 +180,16 @@ export function ContentFilters({
           <summary className="cursor-pointer font-medium text-zinc-800">
             Tags
           </summary>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {tags.map((tag) => {
-              const on = value.tagIds.includes(tag.id);
-              return (
-                <li key={tag.id}>
-                  <button
-                    type="button"
-                    data-testid={`${tagTestIdPrefix}-${tag.id}`}
-                    onClick={() =>
-                      onChange({
-                        ...value,
-                        tagIds: toggleId(value.tagIds, tag.id),
-                      })
-                    }
-                    className={[
-                      "rounded-full px-2.5 py-1 text-xs font-medium",
-                      on
-                        ? "bg-emerald-600 text-white"
-                        : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
-                    ].join(" ")}
-                  >
-                    {tag.name}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="mt-2">
+            <TagChipList
+              tags={tags}
+              selected={value.tagIds}
+              testIdPrefix={tagTestIdPrefix}
+              onToggle={(id) =>
+                onChange({ ...value, tagIds: toggleId(value.tagIds, id) })
+              }
+            />
+          </div>
         </details>
       ) : null}
     </div>
